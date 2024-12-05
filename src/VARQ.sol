@@ -2,8 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts@4.9.3/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts@4.9.3/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "./vTokens.sol";
 
 interface IERC6909 {
     function transfer(address receiver, uint256 id, uint256 amount) external returns (bool);
@@ -49,7 +50,7 @@ contract VARQ is Ownable {
     event Approval(address indexed owner, address indexed spender, uint256 id, uint256 amount);
     event OperatorSet(address indexed owner, address indexed operator, bool approved);
 
-    constructor(address _usdcToken) {
+    constructor(address initialOwner, address _usdcToken) Ownable(initialOwner) {
         usdcToken = IERC20(_usdcToken);
         _createTokenProxy(1, "vUSD", "vUSD", 18);
     }

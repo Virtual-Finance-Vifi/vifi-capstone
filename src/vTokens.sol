@@ -2,6 +2,9 @@
 
 pragma solidity ^0.8.0;
 
+import "./IVARQToken.sol";
+import "./VARQ.sol";
+
 contract vTokens {
     address public parentContract;
     uint256 public tokenId;
