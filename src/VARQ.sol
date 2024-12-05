@@ -92,6 +92,17 @@ contract VARQ is Ownable {
         _burn(msg.sender, 1, amount);
         uint256 nationAmount = (amount * nation.oracleRate) / 1e18; // Normalize to 18 decimals
 
+        // Handle initial minting case
+        if (nation.S_r == 0) {
+            // For the first mint, we set initial ratios
+            nation.S_u = amount;
+            nation.S_f = nationAmount;
+            nation.S_r = amount; // Initialize S_r with the full amount
+            _mint(msg.sender, nation.tokenIdFiat, nationAmount);
+            _mint(msg.sender, nation.tokenIdReserve, amount);
+            return;
+        }
+
         uint256 protocolRate = _calculateProtocolRate(nation.S_f, nation.S_r);
         uint256 fluxRatio = _calculateFluxRatio(protocolRate, nation.oracleRate);
         uint256 reserveRatio = _calculateReserveRatio(nation.S_u, nation.S_r);
@@ -103,7 +114,7 @@ contract VARQ is Ownable {
         _mint(msg.sender, nation.tokenIdFiat, nationAmount);
         _mint(msg.sender, nation.tokenIdReserve, reserveAmount);
 
-        nation.S_u += amount; // Depending on your model, consider normalization here too
+        nation.S_u += amount;
         nation.S_f += nationAmount;
         nation.S_r += reserveAmount;
     }
