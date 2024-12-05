@@ -1,66 +1,55 @@
-## Foundry
+# VARQ Protocol
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+VARQ is a decentralized protocol for creating and managing virtual currency pairs with reserve quotas. It implements a system of tokenized fiat currencies and their corresponding reserve tokens.
 
-Foundry consists of:
+## Core Components
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+### VARQ.sol
+The main contract that handles:
+- Creation and management of virtual currency pairs
+- Minting and burning of currency tokens
+- Oracle rate updates
+- USD deposits and withdrawals
+- Protocol rate calculations and flux influence
 
-## Documentation
+### vTokens.sol
+A proxy contract that wraps each token type with ERC20-like functionality:
+- Standard token interface (name, symbol, decimals)
+- Balance checking
+- Transfer operations
+- Approval mechanisms
 
-https://book.getfoundry.sh/
+### IVARQToken.sol
+Interface defining core token functionality for balance checking and supply calculation.
 
-## Usage
+## Key Features
 
-### Build
+- **Multi-Currency Support**: Each nation-state can have its own virtual currency pair
+- **Oracle Integration**: External price feeds can update exchange rates
+- **Reserve Mechanism**: Implements a reserve quota system with flux ratio calculations
+- **USDC Integration**: Uses USDC as the base deposit currency
+- **ERC20 Compatibility**: All tokens follow standard token interfaces
 
-```shell
-$ forge build
-```
+## Token Types
 
-### Test
+1. **vUSD**: Base virtual USD token (tokenId: 1)
+2. **National Currencies**: Created per nation-state (tokenId: nationId * 2)
+3. **Reserve Quota Tokens**: Paired with each national currency (tokenId: nationId * 2 + 1)
 
-```shell
-$ forge test
-```
+## State Management
 
-### Format
+The protocol maintains several key state variables:
+- `S_u`: USD supply
+- `S_f`: Fiat currency supply
+- `S_r`: Reserve token supply
+- Oracle rates
+- Token metadata
+- Balance and allowance mappings
 
-```shell
-$ forge fmt
-```
+## Testing
 
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+The test suite includes verification of:
+- Initial balance checks
+- USD deposit functionality
+- Currency state management
+- Proxy token operations
