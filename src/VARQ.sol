@@ -57,6 +57,8 @@ contract VARQ is Ownable {
 
     function addvCurrencyState(uint256 nationId, string memory fiatName, string memory reserveName, address oracleUpdater) public onlyOwner {
         require(vCurrencyStates[nationId].tokenIdFiat == 0, "Nation-state already exists");
+        require(oracleUpdater != address(0), "Oracle updater cannot be zero address");
+        
         uint256 tokenIdFiat = nationId * 2;
         uint256 tokenIdReserve = nationId * 2 + 1;
 
