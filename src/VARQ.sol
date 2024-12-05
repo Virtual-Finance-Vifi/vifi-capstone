@@ -26,8 +26,8 @@ contract VARQ is Ownable {
         address proxyAddress;
     }
 
-    struct NationState {
-        uint256 tokenIdCurrency;
+    struct vCurrencyState {
+        uint256 tokenIdFiat;
         uint256 tokenIdReserve;
         uint256 oracleRate;
         uint256 S_u;
@@ -41,9 +41,9 @@ contract VARQ is Ownable {
     mapping(address => mapping(address => mapping(uint256 => uint256))) public allowance;
     mapping(address => mapping(address => bool)) public isOperator;
     mapping(uint256 => address) public tokenProxies;
-    mapping(uint256 => NationState) public nationStates;
+    mapping(uint256 => vCurrencyState) public vCurrencyStates;
 
-    event NationStateAdded(uint256 nationId, uint256 tokenIdCurrency, uint256 tokenIdReserve);
+    event vCurrencyStateAdded(uint256 nationId, uint256 tokenIdFiat, uint256 tokenIdReserve);
     event OracleRateUpdated(uint256 nationId, uint256 newRate);
     event OracleUpdaterUpdated(uint256 nationId, address newUpdater);
     event Transfer(address indexed operator, address from, address to, uint256 id, uint256 amount);
@@ -55,35 +55,35 @@ contract VARQ is Ownable {
         _createTokenProxy(1, "vUSD", "vUSD", 18);
     }
 
-    function addNationState(uint256 nationId, string memory currencyName, string memory reserveName, address oracleUpdater) public onlyOwner {
-        require(nationStates[nationId].tokenIdCurrency == 0, "Nation-state already exists");
-        uint256 tokenIdCurrency = nationId * 2;
+    function addvCurrencyState(uint256 nationId, string memory fiatName, string memory reserveName, address oracleUpdater) public onlyOwner {
+        require(vCurrencyStates[nationId].tokenIdFiat == 0, "Nation-state already exists");
+        uint256 tokenIdFiat = nationId * 2;
         uint256 tokenIdReserve = nationId * 2 + 1;
 
-        _createTokenProxy(tokenIdCurrency, currencyName, string(abi.encodePacked("v", currencyName)), 18);
-        _createTokenProxy(tokenIdReserve, reserveName, string(abi.encodePacked("vRQT_", currencyName)), 18);
+        _createTokenProxy(tokenIdFiat, fiatName, string(abi.encodePacked("v", fiatName)), 18);
+        _createTokenProxy(tokenIdReserve, reserveName, string(abi.encodePacked("vRQT_", fiatName)), 18);
 
-        nationStates[nationId] = NationState(tokenIdCurrency, tokenIdReserve, 0, 0, 0, 0, oracleUpdater);
+        vCurrencyStates[nationId] = vCurrencyState(tokenIdFiat, tokenIdReserve, 0, 0, 0, 0, oracleUpdater);
 
-        emit NationStateAdded(nationId, tokenIdCurrency, tokenIdReserve);
+        emit vCurrencyStateAdded(nationId, tokenIdFiat, tokenIdReserve);
     }
 
     function updateOracleRate(uint256 nationId, uint256 newRate) public {
-        NationState storage nation = nationStates[nationId];
+        vCurrencyState storage nation = vCurrencyStates[nationId];
         require(msg.sender == nation.oracleUpdater, "Not authorized to update oracle");
         nation.oracleRate = newRate;
         emit OracleRateUpdated(nationId, newRate);
     }
 
     function updateOracleUpdater(uint256 nationId, address newUpdater) public onlyOwner {
-        NationState storage nation = nationStates[nationId];
+        vCurrencyState storage nation = vCurrencyStates[nationId];
         nation.oracleUpdater = newUpdater;
         emit OracleUpdaterUpdated(nationId, newUpdater);
     }
 
-    function mintNationCurrency(uint256 nationId, uint256 amount) public {
-        NationState storage nation = nationStates[nationId];
-        require(nation.tokenIdCurrency != 0, "Nation-state does not exist");
+    function mintvCurrency(uint256 nationId, uint256 amount) public {
+        vCurrencyState storage nation = vCurrencyStates[nationId];
+        require(nation.tokenIdFiat != 0, "Nation-state does not exist");
         require(nation.oracleRate > 0, "Oracle rate cannot be zero");
         require(balanceOf[msg.sender][1] >= amount, "Insufficient vUSD balance");
 
@@ -98,7 +98,7 @@ contract VARQ is Ownable {
 
         uint256 reserveAmount = (amount * fluxInfluence) / 1e18; // Normalize back to non-decimal amount
 
-        _mint(msg.sender, nation.tokenIdCurrency, nationAmount);
+        _mint(msg.sender, nation.tokenIdFiat, nationAmount);
         _mint(msg.sender, nation.tokenIdReserve, reserveAmount);
 
         nation.S_u += amount; // Depending on your model, consider normalization here too
@@ -107,10 +107,10 @@ contract VARQ is Ownable {
     }
 
 
-    function burnNationCurrency(uint256 nationId, uint256 amount) public {
-        NationState storage nation = nationStates[nationId];
-        require(nation.tokenIdCurrency != 0, "Nation-state does not exist");
-        require(balanceOf[msg.sender][nation.tokenIdCurrency] >= amount, "Insufficient nation currency balance");
+    function burnvCurrency(uint256 nationId, uint256 amount) public {
+        vCurrencyState storage nation = vCurrencyStates[nationId];
+        require(nation.tokenIdFiat != 0, "Nation-state does not exist");
+        require(balanceOf[msg.sender][nation.tokenIdFiat] >= amount, "Insufficient nation currency balance");
 
         uint256 protocolRate = _calculateProtocolRate(nation.S_f, nation.S_r);
         uint256 usdAmount = (amount * 1e18) / protocolRate; // Normalize the result
@@ -118,7 +118,7 @@ contract VARQ is Ownable {
         require(balanceOf[msg.sender][nation.tokenIdReserve] >= usdAmount, "Insufficient reserve quota token balance");
         require(nation.S_u >= usdAmount, "Insufficient S_u supply");
 
-        _burn(msg.sender, nation.tokenIdCurrency, amount);
+        _burn(msg.sender, nation.tokenIdFiat, amount);
         _burn(msg.sender, nation.tokenIdReserve, usdAmount);
 
         _mint(msg.sender, 1, usdAmount);

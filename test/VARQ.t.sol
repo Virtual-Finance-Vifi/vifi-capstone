@@ -38,10 +38,10 @@ contract VARQTest is Test {
     }
 
 
-    function testMintNationstate() public {
+    function testvCurrenctExiststate() public {
         string memory symbol = "KES";
         string memory name = "rqtKES";
-        varq.addNationState(1, symbol, name, address(this));
+        varq.addvCurrencyState(1, symbol, name, address(this));
 
         // Retrieve the entire struct first
         (
@@ -52,7 +52,7 @@ contract VARQTest is Test {
             uint256 S_f,
             uint256 S_r,
             address oracleUpdater
-        ) = varq.nationStates(1);
+        ) = varq.vCurrencyStates(1);
         
         address proxyAddress = varq.tokenProxies(tokenIdCurrency);
         vTokens vkes = vTokens(proxyAddress);
