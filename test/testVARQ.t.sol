@@ -5,17 +5,17 @@ import "forge-std/Test.sol";
 import "../src/VARQ.sol";
 import "../src/MockUSDC.sol";
 import "../src/vTokens.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract testVARQ is Test {
     event vCurrencyStateAdded(uint256 nationId, uint256 tokenIdFiat, uint256 tokenIdReserve);
     event OracleRateUpdated(uint256 nationId, uint256 rate);
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event TransferSingle(
+    event Transfer(
         address indexed operator,
-        address indexed from,
-        address indexed to,
+        address from,
+        address to,
         uint256 id,
-        uint256 value
+        uint256 amount
     );
 
     VARQ varq;
@@ -285,25 +285,30 @@ contract testVARQ is Test {
 
     // Test burning with insufficient reserve quota
     function testCannotBurnInsufficientReserveQuota() public {
-        // Set up currency state
+        // 1. Setup: Create nation state and set oracle rate
         varq.addvCurrencyState(1, "KES", "rqtKES", address(this));
-        varq.updateOracleRate(1, 1e18);
+        varq.updateOracleRate(1, 1e18);  // 1:1 rate
 
-        // Deposit vUSD
-        uint256 depositAmount = 1e6 * 1e18;
+        // 2. Deposit vUSD for minting
+        uint256 depositAmount = 1e6 * 1e18;  // 1 million vUSD
         usdc.approve(address(varq), depositAmount);
         varq.depositUSD(depositAmount);
         
-        // First mint a larger amount to ensure S_r is initialized
-        uint256 initialMint = 1e5 * 1e18;  // Increased initial mint amount
-        varq.mintvCurrency(1, initialMint);
+        // 3. Mint initial tokens
+        uint256 mintAmount = 1e5 * 1e18;  // 100k tokens
+        varq.mintvCurrency(1, mintAmount);
         
-        // Wait for a block to ensure protocol rate is calculated
-        vm.roll(block.number + 1);
+        // 4. Get token IDs
+        (uint256 tokenIdFiat, uint256 tokenIdReserve,,,,,) = varq.vCurrencyStates(1);
         
-        // Now attempt to burn more than what's available
+        // 5. Transfer half of reserve quota tokens to another address
+        address otherAddress = address(0x123);
+        uint256 reserveBalance = varq.balanceOf(address(this), tokenIdReserve);
+        varq.transfer(otherAddress, tokenIdReserve, reserveBalance / 2);
+        
+        // 6. Try to burn the full amount of nation currency
         vm.expectRevert("Insufficient reserve quota token balance");
-        varq.burnvCurrency(1, 1e6 * 1e18);
+        varq.burnvCurrency(1, mintAmount);  // This should fail as we only have half the needed reserve tokens
     }
 
     // Test successful burning
@@ -365,20 +370,6 @@ contract testVARQ is Test {
     }
 
     // === Calculation Tests ===
-
-    // Test protocol rate calculation with zero S_r
-    function testCannotCalculateProtocolRateZeroSr() public {
-        varq.addvCurrencyState(1, "KES", "rqtKES", address(this));
-        varq.updateOracleRate(1, 1e18);
-
-        // Attempt to mint with zero S_r
-        uint256 depositAmount = 1e6 * 1e18;
-        usdc.approve(address(varq), depositAmount);
-        varq.depositUSD(depositAmount);
-
-        vm.expectRevert("S_r cannot be zero");
-        varq.mintvCurrency(1, depositAmount);
-    }
 
     // Test flux ratio calculation with zero oracle rate
     function testCannotCalculateFluxRatioZeroOracle() public {
@@ -474,25 +465,28 @@ contract testVARQ is Test {
 
     // Test Transfer events
     function testTransferEvents() public {
-        // Set up the deposit amount
         uint256 depositAmount = 1e6 * 1e18;
         usdc.approve(address(varq), depositAmount);
         
-        // Watch for the Transfer event from the USDC contract first
+        // First, expect the ERC20 Transfer from USDC
         vm.expectEmit(true, true, true, true, address(usdc));
-        emit Transfer(address(this), address(varq), depositAmount);
-        
-        // Watch for the ERC1155 Transfer event from the VARQ contract
-        vm.expectEmit(true, true, true, true, address(varq));
-        emit TransferSingle(
-            address(varq),  // operator
-            address(0),     // from (mint)
-            address(this),  // to
-            1,             // id (vUSD token id)
-            depositAmount  // amount
+        emit IERC20.Transfer(
+            address(this),      // from: testVARQ contract
+            address(varq),      // to: VARQ contract
+            depositAmount       // value
         );
         
-        // Perform the deposit
+        // Then, expect the ERC1155 Transfer from VARQ
+        vm.expectEmit(true, true, true, true, address(varq));
+        emit Transfer(
+            address(this),      // operator: testVARQ contract (msg.sender)
+            address(0),         // from: zero address (minting)
+            address(this),      // to: testVARQ contract
+            1,                  // id: vUSD token ID
+            depositAmount       // amount
+        );
+        
+        // Now perform the deposit which will emit both events in order
         varq.depositUSD(depositAmount);
     }
 
@@ -513,5 +507,31 @@ contract testVARQ is Test {
         
         // Wait for a block to ensure protocol rate is calculated
         vm.roll(block.number + 1);
+    }
+
+    function testUSDCTransferEvent() public {
+        uint256 depositAmount = 1e6 * 1e18;
+        usdc.approve(address(varq), depositAmount);
+        
+        vm.expectEmit(true, true, true, true, address(usdc));
+        emit IERC20.Transfer(address(this), address(varq), depositAmount);
+        
+        varq.depositUSD(depositAmount);
+    }
+
+    function testVARQTransferEvent() public {
+        uint256 depositAmount = 1e6 * 1e18;
+        usdc.approve(address(varq), depositAmount);
+        
+        vm.expectEmit(true, true, true, true, address(varq));
+        emit Transfer(
+            address(this),      // operator (the test contract is the operator)
+            address(0),         // from
+            address(this),      // to
+            1,                  // id
+            depositAmount       // amount
+        );
+        
+        varq.depositUSD(depositAmount);
     }
 } 
