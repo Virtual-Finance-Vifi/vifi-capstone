@@ -131,8 +131,8 @@ contract testVARQ is Test {
         vm.stopPrank();
 
         // Verify the oracle rate remains unchanged (should still be 0)
-        (,, uint256 oracleRate,,,,) = varq.vCurrencyStates(nationId);
-        assertEq(oracleRate, 0, "Oracle rate should remain unchanged");
+        IVARQ.vCurrencyState memory state = varq.vCurrencyStates(nationId);
+        assertEq(state.oracleRate, 0, "Oracle rate should remain unchanged");
     }
 
     // Test oracle rate update with valid permissions
@@ -147,8 +147,8 @@ contract testVARQ is Test {
         varq.updateOracleRate(nationId, newRate);
 
         // Verify rate was updated
-        (,, uint256 oracleRate,,,,) = varq.vCurrencyStates(nationId);
-        assertEq(oracleRate, newRate, "Oracle rate should be updated");
+        IVARQ.vCurrencyState memory state = varq.vCurrencyStates(nationId);
+        assertEq(state.oracleRate, newRate, "Oracle rate should be updated");
     }
 
     // Test oracle updater change by non-owner
@@ -212,9 +212,9 @@ contract testVARQ is Test {
         varq.mintvCurrency(1, mintAmount);
 
         // Check balances
-        (uint256 tokenIdFiat, uint256 tokenIdReserve,,,,,) = varq.vCurrencyStates(1);
-        assertEq(varq.balanceOf(address(this), tokenIdFiat), mintAmount * 2); // Account for initial mint
-        assertTrue(varq.balanceOf(address(this), tokenIdReserve) > 0);
+        IVARQ.vCurrencyState memory state = varq.vCurrencyStates(1);
+        assertEq(varq.balanceOf(address(this), state.tokenIdFiat), mintAmount * 2); // Account for initial mint
+        assertTrue(varq.balanceOf(address(this), state.tokenIdReserve) > 0);
     }
 
     // Test minting effects on state variables (S_u, S_f, S_r)
@@ -229,16 +229,22 @@ contract testVARQ is Test {
         varq.depositUSD(depositAmount);
 
         // Record initial state
-        (,, uint256 initialOracleRate, uint256 initialSu, uint256 initialSf, uint256 initialSr,) = 
-            varq.vCurrencyStates(nationId);
+        IVARQ.vCurrencyState memory state = varq.vCurrencyStates(nationId);
+        uint256 initialOracleRate = state.oracleRate;
+        uint256 initialSu = state.S_u;
+        uint256 initialSf = state.S_f;
+        uint256 initialSr = state.S_r;
 
         // Mint nation currency
         uint256 mintAmount = 1e5 * 1e18;
         varq.mintvCurrency(nationId, mintAmount);
 
         // Check updated state variables
-        (,, uint256 newOracleRate, uint256 newSu, uint256 newSf, uint256 newSr,) = 
-            varq.vCurrencyStates(nationId);
+        state = varq.vCurrencyStates(nationId);
+        uint256 newOracleRate = state.oracleRate;
+        uint256 newSu = state.S_u;
+        uint256 newSf = state.S_f;
+        uint256 newSr = state.S_r;
 
         assertTrue(newSu > initialSu, "S_u should increase");
         assertTrue(newSf > initialSf, "S_f should increase");
@@ -255,7 +261,7 @@ contract testVARQ is Test {
         varq.updateOracleRate(nationId, 1e18);
 
         // Attempt to burn without any balance
-        (uint256 tokenIdFiat,,,,,,) = varq.vCurrencyStates(nationId);
+        IVARQ.vCurrencyState memory state = varq.vCurrencyStates(nationId);
         vm.expectRevert("Insufficient nation currency balance");
         varq.burnvCurrency(nationId, 1e18);
     }
@@ -275,8 +281,10 @@ contract testVARQ is Test {
         uint256 mintAmount = 1e5 * 1e18;  // 100k tokens
         varq.mintvCurrency(nationId, mintAmount);
         
-        // 4. Get token IDs
-        (uint256 tokenIdFiat, uint256 tokenIdReserve,,,,,) = varq.vCurrencyStates(nationId);
+        // 4. Get token IDs - using tuple destructuring instead of struct
+        IVARQ.vCurrencyState memory state = varq.vCurrencyStates(nationId);
+        uint256 tokenIdFiat = state.tokenIdFiat;
+        uint256 tokenIdReserve = state.tokenIdReserve;
         
         // 5. Transfer half of reserve quota tokens to another address
         address otherAddress = address(0x123);
@@ -303,7 +311,9 @@ contract testVARQ is Test {
         varq.mintvCurrency(nationId, mintAmount);
 
         // Record balances before burn
-        (uint256 tokenIdFiat, uint256 tokenIdReserve,,,,,) = varq.vCurrencyStates(nationId);
+        IVARQ.vCurrencyState memory state = varq.vCurrencyStates(nationId);
+        uint256 tokenIdFiat = state.tokenIdFiat;
+        uint256 tokenIdReserve = state.tokenIdReserve;
         uint256 initialFiatBalance = varq.balanceOf(address(this), tokenIdFiat);
         uint256 initialReserveBalance = varq.balanceOf(address(this), tokenIdReserve);
 
@@ -369,9 +379,9 @@ contract testVARQ is Test {
         _initializeReserveState(1);
 
         // Verify state changes
-        (,,, uint256 Su,, uint256 Sr,) = varq.vCurrencyStates(1);
-        assertTrue(Sr > 0, "S_r should be greater than zero");
-        assertTrue(Su > 0, "S_u should be greater than zero");
+        IVARQ.vCurrencyState memory state = varq.vCurrencyStates(1);
+        assertTrue(state.S_r > 0, "S_r should be greater than zero");
+        assertTrue(state.S_u > 0, "S_u should be greater than zero");
     }
 
     // === Integration Tests ===
@@ -415,19 +425,27 @@ contract testVARQ is Test {
         varq.mintvCurrency(2, mintAmount);
 
         // Verify independent state management
-        (uint256 tokenIdFiat1,,,,,,) = varq.vCurrencyStates(1);
-        (uint256 tokenIdFiat2,,,,,,) = varq.vCurrencyStates(2);
+        IVARQ.vCurrencyState memory state1 = varq.vCurrencyStates(1);
+        IVARQ.vCurrencyState memory state2 = varq.vCurrencyStates(2);
         
-        assertTrue(varq.balanceOf(address(this), tokenIdFiat1) > 0);
-        assertTrue(varq.balanceOf(address(this), tokenIdFiat2) > 0);
+        assertTrue(varq.balanceOf(address(this), state1.tokenIdFiat) > 0);
+        assertTrue(varq.balanceOf(address(this), state2.tokenIdFiat) > 0);
     }
 
     // === Event Tests ===
 
     // Test vCurrencyStateAdded event
     function testVCurrencyStateAddedEvent() public {
+        // First currency state uses currencyId 1, tokenIds 2,3
+        varq.addvCurrencyState("TEST", "rqtTEST", address(this));
+        
+        // Next currency state will use:
+        // - currencyId: 2
+        // - tokenIdFiat: 4
+        // - tokenIdReserve: 5
         vm.expectEmit(true, true, true, true);
-        emit vCurrencyStateAdded(1, 2, 3); // nationId=1, tokenIdFiat=2, tokenIdReserve=3
+        emit vCurrencyStateAdded(2, 4, 5);
+        
         varq.addvCurrencyState("KES", "rqtKES", address(this));
     }
 
@@ -527,7 +545,9 @@ contract testVARQ is Test {
         varq.mintvCurrency(nationId, mintAmount);
         
         // Get token IDs using the returned nationId
-        (uint256 tokenIdFiat, uint256 tokenIdReserve,,,,,) = varq.vCurrencyStates(nationId);
+        IVARQ.vCurrencyState memory state = varq.vCurrencyStates(nationId);
+        uint256 tokenIdFiat = state.tokenIdFiat;
+        uint256 tokenIdReserve = state.tokenIdReserve;
         
         // Verify balances
         assertEq(varq.balanceOf(address(this), tokenIdFiat), mintAmount);

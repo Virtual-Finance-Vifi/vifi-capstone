@@ -1,23 +1,26 @@
-// SPDX-License-Identifier: CC0-1.0
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
 
-import "./IVARQToken.sol";
+import "./interfaces/IVARQ.sol";
 import "./VARQ.sol";
+import "./interfaces/IvTokens.sol";
 
-contract vTokens {
+contract vTokens is IvTokens {
     address public parentContract;
     uint256 public tokenId;
     string public tokenName;
     string public tokenSymbol;
     uint8 public tokenDecimals;
+    uint256 public vCurrencyId;
 
-    constructor(address _parentContract, uint256 _tokenId, string memory name_, string memory symbol_, uint8 decimals_) {
+    constructor(address _parentContract, uint256 _tokenId, string memory name_, string memory symbol_, uint8 decimals_, uint256 _vCurrencyId) {
         parentContract = _parentContract;
         tokenId = _tokenId;
         tokenName = name_;
         tokenSymbol = symbol_;
         tokenDecimals = decimals_;
+        vCurrencyId = _vCurrencyId;
     }
 
     function name() public view returns (string memory) {

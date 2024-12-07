@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: CC0-1.0
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./vTokens.sol";
+import "./interfaces/IVARQ.sol";
 
 interface IERC6909 {
     function transfer(address receiver, uint256 id, uint256 amount) external returns (bool);
@@ -14,41 +15,17 @@ interface IERC6909 {
     function totalSupply(uint256 id) external view returns (uint256);
 }
 
-contract VARQ is Ownable {
+contract VARQ is Ownable, IVARQ {
 
     IERC20 public usdcToken;
 
-    struct vTokenMetadata {
-        string name;
-        string symbol;
-        uint8 decimals;
-        uint256 totalSupply;
-        address proxyAddress;
-    }
+    mapping(uint256 => vTokenMetadata) private _tokenMetadatas;
+    mapping(uint256 => vCurrencyState) private _vCurrencyStates;
 
-    struct vCurrencyState {
-        uint256 tokenIdFiat;
-        uint256 tokenIdReserve;
-        uint256 oracleRate;
-        uint256 S_u;
-        uint256 S_f;
-        uint256 S_r;
-        address oracleUpdater;
-    }
-
-    mapping(uint256 => vTokenMetadata) public tokenMetadatas;
     mapping(address => mapping(uint256 => uint256)) public balanceOf;
     mapping(address => mapping(address => mapping(uint256 => uint256))) public allowance;
     mapping(address => mapping(address => bool)) public isOperator;
     mapping(uint256 => address) public tokenProxies;
-    mapping(uint256 => vCurrencyState) public vCurrencyStates;
-
-    event vCurrencyStateAdded(uint256 currencyId, uint256 tokenIdFiat, uint256 tokenIdReserve);
-    event OracleRateUpdated(uint256 currencyId, uint256 newRate);
-    event OracleUpdaterUpdated(uint256 currencyId, address newUpdater);
-    event Transfer(address indexed operator, address from, address to, uint256 id, uint256 amount);
-    event Approval(address indexed owner, address indexed spender, uint256 id, uint256 amount);
-    event OperatorSet(address indexed owner, address indexed operator, bool approved);
 
     // Add counters for both token IDs and nation IDs
     uint256 private nextTokenId = 2;    // Start at 2 since vUSD is token ID 1
@@ -56,7 +33,7 @@ contract VARQ is Ownable {
 
     constructor(address initialOwner, address _usdcToken) Ownable(initialOwner) {
         usdcToken = IERC20(_usdcToken);
-        _createTokenProxy(1, "vUSD", "vUSD", 18);
+        _createTokenProxy(1, "vUSD", "vUSD", 18, 0);
     }
 
     function addvCurrencyState(
@@ -66,7 +43,7 @@ contract VARQ is Ownable {
     ) public onlyOwner returns (uint256) {
         uint256 currencyId = nextvCurrencyId++;  // Auto-increment nation ID
         
-        require(vCurrencyStates[currencyId].tokenIdFiat == 0, "Nation-state already exists");
+        require(_vCurrencyStates[currencyId].tokenIdFiat == 0, "Nation-state already exists");
         require(oracleUpdater != address(0), "Oracle updater cannot be zero address");
         
         // Use nextTokenId for token IDs
@@ -74,10 +51,10 @@ contract VARQ is Ownable {
         uint256 tokenIdReserve = nextTokenId + 1;
         nextTokenId += 2;  // Increment by 2 for the next pair
 
-        _createTokenProxy(tokenIdFiat, fiatName, string(abi.encodePacked("v", fiatName)), 18);
-        _createTokenProxy(tokenIdReserve, reserveName, string(abi.encodePacked("vRQT_", fiatName)), 18);
+        _createTokenProxy(tokenIdFiat, fiatName, string(abi.encodePacked("v", fiatName)), 18, currencyId);
+        _createTokenProxy(tokenIdReserve, reserveName, string(abi.encodePacked("vRQT_", fiatName)), 18, currencyId);
 
-        vCurrencyStates[currencyId] = vCurrencyState(
+        _vCurrencyStates[currencyId] = vCurrencyState(
             tokenIdFiat, 
             tokenIdReserve, 
             0, 
@@ -88,24 +65,25 @@ contract VARQ is Ownable {
         );
 
         emit vCurrencyStateAdded(currencyId, tokenIdFiat, tokenIdReserve);
-        return currencyId;  // Return the assigned currencyId
+
+        return currencyId;
     }
 
     function updateOracleRate(uint256 currencyId, uint256 newRate) public {
-        vCurrencyState storage nation = vCurrencyStates[currencyId];
+        vCurrencyState storage nation = _vCurrencyStates[currencyId];
         require(msg.sender == nation.oracleUpdater, "Not authorized to update oracle");
         nation.oracleRate = newRate;
         emit OracleRateUpdated(currencyId, newRate);
     }
 
     function updateOracleUpdater(uint256 currencyId, address newUpdater) public onlyOwner {
-        vCurrencyState storage nation = vCurrencyStates[currencyId];
+        vCurrencyState storage nation = _vCurrencyStates[currencyId];
         nation.oracleUpdater = newUpdater;
-        emit OracleUpdaterUpdated(currencyId, newUpdater);
+        emit OracleUpdated(newUpdater);
     }
 
     function mintvCurrency(uint256 currencyId, uint256 amount) public {
-        vCurrencyState storage nation = vCurrencyStates[currencyId];
+        vCurrencyState storage nation = _vCurrencyStates[currencyId];
         require(nation.tokenIdFiat != 0, "Nation-state does not exist");
         require(nation.oracleRate > 0, "Oracle rate cannot be zero");
         require(balanceOf[msg.sender][1] >= amount, "Insufficient vUSD balance");
@@ -142,7 +120,7 @@ contract VARQ is Ownable {
 
 
     function burnvCurrency(uint256 currencyId, uint256 amount) public {
-        vCurrencyState storage nation = vCurrencyStates[currencyId];
+        vCurrencyState storage nation = _vCurrencyStates[currencyId];
         require(nation.tokenIdFiat != 0, "Nation-state does not exist");
         require(balanceOf[msg.sender][nation.tokenIdFiat] >= amount, "Insufficient nation currency balance");
 
@@ -249,26 +227,33 @@ contract VARQ is Ownable {
     }
 
     function _mint(address receiver, uint256 id, uint256 amount) internal {
-        tokenMetadatas[id].totalSupply += amount;
+        _tokenMetadatas[id].totalSupply += amount;
         balanceOf[receiver][id] += amount;
         emit Transfer(msg.sender, address(0), receiver, id, amount);
     }
 
     function _burn(address sender, uint256 id, uint256 amount) internal {
         require(balanceOf[sender][id] >= amount, "Insufficient balance to burn");
-        tokenMetadatas[id].totalSupply -= amount;
+        _tokenMetadatas[id].totalSupply -= amount;
         balanceOf[sender][id] -= amount;
         emit Transfer(msg.sender, sender, address(0), id, amount);
     }
 
-    function _createTokenProxy(uint256 id, string memory name_, string memory symbol_, uint8 decimals_) internal {
-        vTokens proxy = new vTokens(address(this), id, name_, symbol_, decimals_);
-        tokenMetadatas[id] = vTokenMetadata(name_, symbol_, decimals_, 0, address(proxy));
+    function _createTokenProxy(uint256 id, string memory name_, string memory symbol_, uint8 decimals_, uint256 vCurrencyId_) internal {
+        vTokens proxy = new vTokens(
+            address(this), 
+            id, 
+            name_, 
+            symbol_, 
+            decimals_,
+            vCurrencyId_  // Pass through to constructor
+        );
+        _tokenMetadatas[id] = vTokenMetadata(name_, symbol_, decimals_, 0, address(proxy), vCurrencyId_);
         tokenProxies[id] = address(proxy);
     }
 
     function calculateTotalSupply(uint256 tokenId) public view returns (uint256) {
-        return tokenMetadatas[tokenId].totalSupply;
+        return _tokenMetadatas[tokenId].totalSupply;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -314,5 +299,13 @@ contract VARQ is Ownable {
     // Optional: Add view functions to check the next available IDs
     function getNextvCurrencyId() public view returns (uint256) {
         return nextvCurrencyId;
+    }
+
+    function tokenMetadatas(uint256 id) external view returns (vTokenMetadata memory) {
+        return _tokenMetadatas[id];
+    }
+
+    function vCurrencyStates(uint256 currencyId) external view returns (vCurrencyState memory) {
+        return _vCurrencyStates[currencyId];
     }
 }
