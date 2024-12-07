@@ -13,9 +13,9 @@ varq.addvCurrencyState("TTD", "rqtTTD", oracleUpdater);
 ```
 
 Set the initial oracle rate (1 USD = 6.8 TTD):
-
+```
 varq.updateOracleRate(1, 6.8e18);
-
+```
 
 ## 2. First User: 1M USD Deposit
 
