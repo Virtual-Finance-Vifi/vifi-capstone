@@ -55,12 +55,13 @@ Oracle Rate: 6.9 (new)
 ## 4. Second User: 500k USD Deposit
 
 New user deposits 500k USDC:
-
+```
 varq.depositUSD(500_000e18); // Receives 500k vUSD (ID: 1)
 
 Mint TTD with 500k vUSD:
 
 varq.mintvCurrency(1, 500_000e18);
+```
 
 ### Calculations Before Second Mint
 
