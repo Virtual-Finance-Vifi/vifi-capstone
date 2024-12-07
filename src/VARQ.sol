@@ -43,16 +43,16 @@ contract VARQ is Ownable {
     mapping(uint256 => address) public tokenProxies;
     mapping(uint256 => vCurrencyState) public vCurrencyStates;
 
-    event vCurrencyStateAdded(uint256 nationId, uint256 tokenIdFiat, uint256 tokenIdReserve);
-    event OracleRateUpdated(uint256 nationId, uint256 newRate);
-    event OracleUpdaterUpdated(uint256 nationId, address newUpdater);
+    event vCurrencyStateAdded(uint256 currencyId, uint256 tokenIdFiat, uint256 tokenIdReserve);
+    event OracleRateUpdated(uint256 currencyId, uint256 newRate);
+    event OracleUpdaterUpdated(uint256 currencyId, address newUpdater);
     event Transfer(address indexed operator, address from, address to, uint256 id, uint256 amount);
     event Approval(address indexed owner, address indexed spender, uint256 id, uint256 amount);
     event OperatorSet(address indexed owner, address indexed operator, bool approved);
 
     // Add counters for both token IDs and nation IDs
     uint256 private nextTokenId = 2;    // Start at 2 since vUSD is token ID 1
-    uint256 private nextNationId = 1;   // Start nation IDs at 1
+    uint256 private nextvCurrencyId = 1;   // Start nation IDs at 1
 
     constructor(address initialOwner, address _usdcToken) Ownable(initialOwner) {
         usdcToken = IERC20(_usdcToken);
@@ -64,9 +64,9 @@ contract VARQ is Ownable {
         string memory reserveName, 
         address oracleUpdater
     ) public onlyOwner returns (uint256) {
-        uint256 nationId = nextNationId++;  // Auto-increment nation ID
+        uint256 currencyId = nextvCurrencyId++;  // Auto-increment nation ID
         
-        require(vCurrencyStates[nationId].tokenIdFiat == 0, "Nation-state already exists");
+        require(vCurrencyStates[currencyId].tokenIdFiat == 0, "Nation-state already exists");
         require(oracleUpdater != address(0), "Oracle updater cannot be zero address");
         
         // Use nextTokenId for token IDs
@@ -77,7 +77,7 @@ contract VARQ is Ownable {
         _createTokenProxy(tokenIdFiat, fiatName, string(abi.encodePacked("v", fiatName)), 18);
         _createTokenProxy(tokenIdReserve, reserveName, string(abi.encodePacked("vRQT_", fiatName)), 18);
 
-        vCurrencyStates[nationId] = vCurrencyState(
+        vCurrencyStates[currencyId] = vCurrencyState(
             tokenIdFiat, 
             tokenIdReserve, 
             0, 
@@ -87,25 +87,25 @@ contract VARQ is Ownable {
             oracleUpdater
         );
 
-        emit vCurrencyStateAdded(nationId, tokenIdFiat, tokenIdReserve);
-        return nationId;  // Return the assigned nationId
+        emit vCurrencyStateAdded(currencyId, tokenIdFiat, tokenIdReserve);
+        return currencyId;  // Return the assigned currencyId
     }
 
-    function updateOracleRate(uint256 nationId, uint256 newRate) public {
-        vCurrencyState storage nation = vCurrencyStates[nationId];
+    function updateOracleRate(uint256 currencyId, uint256 newRate) public {
+        vCurrencyState storage nation = vCurrencyStates[currencyId];
         require(msg.sender == nation.oracleUpdater, "Not authorized to update oracle");
         nation.oracleRate = newRate;
-        emit OracleRateUpdated(nationId, newRate);
+        emit OracleRateUpdated(currencyId, newRate);
     }
 
-    function updateOracleUpdater(uint256 nationId, address newUpdater) public onlyOwner {
-        vCurrencyState storage nation = vCurrencyStates[nationId];
+    function updateOracleUpdater(uint256 currencyId, address newUpdater) public onlyOwner {
+        vCurrencyState storage nation = vCurrencyStates[currencyId];
         nation.oracleUpdater = newUpdater;
-        emit OracleUpdaterUpdated(nationId, newUpdater);
+        emit OracleUpdaterUpdated(currencyId, newUpdater);
     }
 
-    function mintvCurrency(uint256 nationId, uint256 amount) public {
-        vCurrencyState storage nation = vCurrencyStates[nationId];
+    function mintvCurrency(uint256 currencyId, uint256 amount) public {
+        vCurrencyState storage nation = vCurrencyStates[currencyId];
         require(nation.tokenIdFiat != 0, "Nation-state does not exist");
         require(nation.oracleRate > 0, "Oracle rate cannot be zero");
         require(balanceOf[msg.sender][1] >= amount, "Insufficient vUSD balance");
@@ -141,8 +141,8 @@ contract VARQ is Ownable {
     }
 
 
-    function burnvCurrency(uint256 nationId, uint256 amount) public {
-        vCurrencyState storage nation = vCurrencyStates[nationId];
+    function burnvCurrency(uint256 currencyId, uint256 amount) public {
+        vCurrencyState storage nation = vCurrencyStates[currencyId];
         require(nation.tokenIdFiat != 0, "Nation-state does not exist");
         require(balanceOf[msg.sender][nation.tokenIdFiat] >= amount, "Insufficient nation currency balance");
 
@@ -270,7 +270,7 @@ contract VARQ is Ownable {
     }
 
     // Optional: Add view functions to check the next available IDs
-    function getNextNationId() public view returns (uint256) {
-        return nextNationId;
+    function getNextvCurrencyId() public view returns (uint256) {
+        return nextvCurrencyId;
     }
 }
