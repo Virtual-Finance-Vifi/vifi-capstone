@@ -180,25 +180,25 @@ contract VARQ is Ownable {
     }
 
     // Returns the protocol rate normalized to 18 decimal places
-    function _calculateProtocolRate(uint256 S_f, uint256 S_r) internal pure returns (uint256) {
+    function _calculateProtocolRate(uint256 S_f, uint256 S_r) public pure returns (uint256) {
         require(S_r > 0, "S_r cannot be zero");
         return (S_f * 1e18) / S_r;
     }
 
     // Returns the flux ratio normalized to 18 decimal places
-    function _calculateFluxRatio(uint256 protocolRate, uint256 oracleRate) internal pure returns (uint256) {
+    function _calculateFluxRatio(uint256 protocolRate, uint256 oracleRate) public pure returns (uint256) {
         require(oracleRate > 0, "oracleRate cannot be zero");
         return (protocolRate * 1e18) / oracleRate;
     }
 
     // Returns the reserve ratio normalized to 18 decimal places
-    function _calculateReserveRatio(uint256 S_u, uint256 S_r) internal pure returns (uint256) {
+    function _calculateReserveRatio(uint256 S_u, uint256 S_r) public pure returns (uint256) {
         require(S_r > 0, "S_r cannot be zero");
         return (S_u * 1e18) / S_r;
     }
 
     // Calculates flux influence, taking into account normalization where necessary
-    function _calculateFluxInfluence(uint256 fluxRatio, uint256 reserveRatio) internal pure returns (uint256) {
+    function _calculateFluxInfluence(uint256 fluxRatio, uint256 reserveRatio) public pure returns (uint256) {
         if (fluxRatio > 1e18 && reserveRatio <= 1e18) {
             return 1e18; // normalize to 18 decimal places
         } else {
