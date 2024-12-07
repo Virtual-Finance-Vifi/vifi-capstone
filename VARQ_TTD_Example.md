@@ -7,7 +7,7 @@ This walkthrough demonstrates the VARQ protocol handling the Trinidad and Tobago
 First, we create a new currency state for TTD:
 
 varq.addvCurrencyState("TTD", "rqtTTD", oracleUpdater);
-// Creates:
+//Creates:
 // - vTTD (ID: 2)
 // - vRQT_TTD (ID: 3)
 
@@ -63,20 +63,20 @@ varq.mintvCurrency(1, 500_000e18);
 
 ### Calculations Before Second Mint
 
-Protocol Rate: 6.8
-Oracle Rate: 6.9
-Flux Ratio: 0.985 (6.8/6.9)
-Flux Influence: 0.985 (reserve ratio = 1)
+   - Protocol Rate: 6.8
+   - Oracle Rate: 6.9
+   - Flux Ratio: 0.985 (6.8/6.9)
+   - Flux Influence: 0.985 (reserve ratio = 1)
 
 ### State After Second Mint
 
-S_u: 1,500,000 (1M + 500k)
-S_f: 10,250,000 (6.8M + [500k 6.9])
-S_r: 1,492,500 (1M + [500k 0.985])
-Protocol Rate: 6.87 (10.25M/1.4925M)
-Second User Receives:
-3.45M vTTD (500k 6.9)
-492.5k vRQT_TTD (500k 0.985)
+   - S_u: 1,500,000 (1M + 500k)
+   - S_f: 10,250,000 (6.8M + [500k 6.9])
+   - S_r: 1,492,500 (1M + [500k 0.985])
+   - Protocol Rate: 6.87 (10.25M/1.4925M)
+   - Second User Receives:
+   - 3.45M vTTD (500k 6.9)
+   - 492.5k vRQT_TTD (500k 0.985)
 
 
 ## Key System Behaviors
