@@ -20,13 +20,13 @@ varq.updateOracleRate(1, 6.8e18);
 ## 2. First User: 1M USD Deposit
 
 User deposits 1M USDC and receives vUSD:
-
+```
 varq.depositUSD(1_000_000e18); // Receives 1M vUSD (ID: 1)
-
+```
 Mint TTD with 1M vUSD:
-
+```
 varq.mintvCurrency(1, 1_000_000e18);
-
+```
 ### State After First Mint
 
    - S_u (USD Supply): 1,000,000
@@ -41,9 +41,9 @@ varq.mintvCurrency(1, 1_000_000e18);
 ## 3. Oracle Rate Update
 
 Oracle rate changes from 6.8 to 6.9:
-
+```
 varq.updateOracleRate(1, 6.9e18);
-
+```
 ### State After Rate Change
 
 
@@ -57,9 +57,9 @@ Oracle Rate: 6.9 (new)
 New user deposits 500k USDC:
 ```
 varq.depositUSD(500_000e18); // Receives 500k vUSD (ID: 1)
-
+```
 Mint TTD with 500k vUSD:
-
+```
 varq.mintvCurrency(1, 500_000e18);
 ```
 
