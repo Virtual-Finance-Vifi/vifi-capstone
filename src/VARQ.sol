@@ -50,24 +50,45 @@ contract VARQ is Ownable {
     event Approval(address indexed owner, address indexed spender, uint256 id, uint256 amount);
     event OperatorSet(address indexed owner, address indexed operator, bool approved);
 
+    // Add counters for both token IDs and nation IDs
+    uint256 private nextTokenId = 2;    // Start at 2 since vUSD is token ID 1
+    uint256 private nextNationId = 1;   // Start nation IDs at 1
+
     constructor(address initialOwner, address _usdcToken) Ownable(initialOwner) {
         usdcToken = IERC20(_usdcToken);
         _createTokenProxy(1, "vUSD", "vUSD", 18);
     }
 
-    function addvCurrencyState(uint256 nationId, string memory fiatName, string memory reserveName, address oracleUpdater) public onlyOwner {
+    function addvCurrencyState(
+        string memory fiatName, 
+        string memory reserveName, 
+        address oracleUpdater
+    ) public onlyOwner returns (uint256) {
+        uint256 nationId = nextNationId++;  // Auto-increment nation ID
+        
         require(vCurrencyStates[nationId].tokenIdFiat == 0, "Nation-state already exists");
         require(oracleUpdater != address(0), "Oracle updater cannot be zero address");
         
-        uint256 tokenIdFiat = nationId * 2;
-        uint256 tokenIdReserve = nationId * 2 + 1;
+        // Use nextTokenId for token IDs
+        uint256 tokenIdFiat = nextTokenId;
+        uint256 tokenIdReserve = nextTokenId + 1;
+        nextTokenId += 2;  // Increment by 2 for the next pair
 
         _createTokenProxy(tokenIdFiat, fiatName, string(abi.encodePacked("v", fiatName)), 18);
         _createTokenProxy(tokenIdReserve, reserveName, string(abi.encodePacked("vRQT_", fiatName)), 18);
 
-        vCurrencyStates[nationId] = vCurrencyState(tokenIdFiat, tokenIdReserve, 0, 0, 0, 0, oracleUpdater);
+        vCurrencyStates[nationId] = vCurrencyState(
+            tokenIdFiat, 
+            tokenIdReserve, 
+            0, 
+            0, 
+            0, 
+            0, 
+            oracleUpdater
+        );
 
         emit vCurrencyStateAdded(nationId, tokenIdFiat, tokenIdReserve);
+        return nationId;  // Return the assigned nationId
     }
 
     function updateOracleRate(uint256 nationId, uint256 newRate) public {
@@ -241,5 +262,15 @@ contract VARQ is Ownable {
         isOperator[msg.sender][operator] = approved;
         emit OperatorSet(msg.sender, operator, approved);
         return true;
+    }
+
+    // Optional: Add a view function to check the next token ID
+    function getNextTokenId() public view returns (uint256) {
+        return nextTokenId;
+    }
+
+    // Optional: Add view functions to check the next available IDs
+    function getNextNationId() public view returns (uint256) {
+        return nextNationId;
     }
 }

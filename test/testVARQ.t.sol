@@ -92,34 +92,11 @@ contract testVARQ is Test {
     // === Currency State Management Tests ===
     
     // Test adding currency state with invalid nation ID
-    function testCannotAddDuplicateNationState() public {
-        // First addition should succeed
-        string memory symbol = "KES";
-        string memory name = "rqtKES";
-        varq.addvCurrencyState(1, symbol, name, address(this));
-
-        // Second addition with same nationId should fail
-        vm.expectRevert("Nation-state already exists");
-        varq.addvCurrencyState(1, "KES2", "rqtKES2", address(this));
-
-        // Verify the original state remains unchanged
-        (
-            uint256 tokenIdFiat,
-            uint256 tokenIdReserve,
-            ,,,, // Skip other fields we don't need to check
-            address oracleUpdater
-        ) = varq.vCurrencyStates(1);
-
-        // Check that original values are maintained
-        assertEq(tokenIdFiat, 2, "Original tokenIdFiat should be unchanged");
-        assertEq(tokenIdReserve, 3, "Original tokenIdReserve should be unchanged");
-        assertEq(oracleUpdater, address(this), "Original oracleUpdater should be unchanged");
-
-        // Verify original token names are maintained
-        vTokens vkes = vTokens(varq.tokenProxies(tokenIdFiat));
-        assertEq(vkes.name(), symbol, "Original token name should be unchanged");
-        assertEq(vkes.symbol(), string(abi.encodePacked("v", symbol)), "Original token symbol should be unchanged");
-    }
+    // function testCannotAddDuplicateNationState() public {
+    //     varq.addvCurrencyState("KES", "rqtKES", address(this));
+    //     vm.expectRevert("Nation-state already exists");
+    //     varq.addvCurrencyState("KES", "rqtKES2", address(this));
+    // }
 
     // Test adding currency state with zero address oracle
     function testCannotAddZeroAddressOracle() public {
@@ -129,7 +106,7 @@ contract testVARQ is Test {
         
         // Expect the transaction to revert with a specific error message
         vm.expectRevert("Oracle updater cannot be zero address");
-        varq.addvCurrencyState(1, symbol, name, address(0));
+        varq.addvCurrencyState(symbol, name, address(0));
     }
 
     // === Oracle Management Tests ===
@@ -139,7 +116,7 @@ contract testVARQ is Test {
         // First set up a currency state
         string memory symbol = "KES";
         string memory name = "rqtKES";
-        varq.addvCurrencyState(1, symbol, name, address(this));
+        uint256 nationId = varq.addvCurrencyState(symbol, name, address(this));
 
         // Create a different address to act as unauthorized user
         address unauthorized = address(0x1);
@@ -149,12 +126,12 @@ contract testVARQ is Test {
         
         // Attempt to update oracle rate with unauthorized address
         vm.expectRevert("Not authorized to update oracle");
-        varq.updateOracleRate(1, 1e18); // Trying to set rate to 1:1
+        varq.updateOracleRate(nationId, 1e18); // Trying to set rate to 1:1
         
         vm.stopPrank();
 
         // Verify the oracle rate remains unchanged (should still be 0)
-        (,, uint256 oracleRate,,,,) = varq.vCurrencyStates(1);
+        (,, uint256 oracleRate,,,,) = varq.vCurrencyStates(nationId);
         assertEq(oracleRate, 0, "Oracle rate should remain unchanged");
     }
 
@@ -163,21 +140,21 @@ contract testVARQ is Test {
         // Set up currency state
         string memory symbol = "KES";
         string memory name = "rqtKES";
-        varq.addvCurrencyState(1, symbol, name, address(this));
+        uint256 nationId = varq.addvCurrencyState(symbol, name, address(this));
 
         // Update oracle rate
         uint256 newRate = 1e18; // 1:1 rate
-        varq.updateOracleRate(1, newRate);
+        varq.updateOracleRate(nationId, newRate);
 
         // Verify rate was updated
-        (,, uint256 oracleRate,,,,) = varq.vCurrencyStates(1);
+        (,, uint256 oracleRate,,,,) = varq.vCurrencyStates(nationId);
         assertEq(oracleRate, newRate, "Oracle rate should be updated");
     }
 
     // Test oracle updater change by non-owner
     function testCannotUpdateOracleUpdaterUnauthorized() public {
         // Set up currency state
-        varq.addvCurrencyState(1, "KES", "rqtKES", address(this));
+        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
         
         // Create unauthorized address
         address unauthorized = address(0x1);
@@ -185,7 +162,7 @@ contract testVARQ is Test {
         
         // Attempt unauthorized update
         vm.expectRevert();  // Just check for any revert
-        varq.updateOracleUpdater(1, address(0x2));
+        varq.updateOracleUpdater(nationId, address(0x2));
         
         vm.stopPrank();
     }
@@ -195,18 +172,18 @@ contract testVARQ is Test {
     // Test minting with insufficient vUSD balance
     function testCannotMintWithInsufficientVUSD() public {
         // Set up currency state
-        varq.addvCurrencyState(1, "KES", "rqtKES", address(this));
-        varq.updateOracleRate(1, 1e18);
+        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
+        varq.updateOracleRate(nationId, 1e18);
 
         // Attempt to mint without enough vUSD
         vm.expectRevert("Insufficient vUSD balance");
-        varq.mintvCurrency(1, 1e18);
+        varq.mintvCurrency(nationId, 1e18);
     }
 
     // Test minting with zero oracle rate
     function testCannotMintWithZeroOracleRate() public {
         // Set up currency state without setting oracle rate
-        varq.addvCurrencyState(1, "KES", "rqtKES", address(this));
+        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
         
         // Deposit some vUSD first
         uint256 depositAmount = 1e6 * 1e18;
@@ -215,7 +192,7 @@ contract testVARQ is Test {
 
         // Attempt to mint with zero oracle rate
         vm.expectRevert("Oracle rate cannot be zero");
-        varq.mintvCurrency(1, 1e18);
+        varq.mintvCurrency(nationId, 1e18);
     }
 
     // Test minting with non-existent nation state
@@ -243,8 +220,8 @@ contract testVARQ is Test {
     // Test minting effects on state variables (S_u, S_f, S_r)
     function testMintStateVariables() public {
         // Set up currency state
-        varq.addvCurrencyState(1, "KES", "rqtKES", address(this));
-        varq.updateOracleRate(1, 1e18);
+        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
+        varq.updateOracleRate(nationId, 1e18);
 
         // Deposit vUSD
         uint256 depositAmount = 1e6 * 1e18;
@@ -253,15 +230,15 @@ contract testVARQ is Test {
 
         // Record initial state
         (,, uint256 initialOracleRate, uint256 initialSu, uint256 initialSf, uint256 initialSr,) = 
-            varq.vCurrencyStates(1);
+            varq.vCurrencyStates(nationId);
 
         // Mint nation currency
         uint256 mintAmount = 1e5 * 1e18;
-        varq.mintvCurrency(1, mintAmount);
+        varq.mintvCurrency(nationId, mintAmount);
 
         // Check updated state variables
         (,, uint256 newOracleRate, uint256 newSu, uint256 newSf, uint256 newSr,) = 
-            varq.vCurrencyStates(1);
+            varq.vCurrencyStates(nationId);
 
         assertTrue(newSu > initialSu, "S_u should increase");
         assertTrue(newSf > initialSf, "S_f should increase");
@@ -274,20 +251,20 @@ contract testVARQ is Test {
     // Test burning with insufficient nation currency
     function testCannotBurnInsufficientNationCurrency() public {
         // Set up currency state and mint some currency
-        varq.addvCurrencyState(1, "KES", "rqtKES", address(this));
-        varq.updateOracleRate(1, 1e18);
+        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
+        varq.updateOracleRate(nationId, 1e18);
 
         // Attempt to burn without any balance
-        (uint256 tokenIdFiat,,,,,,) = varq.vCurrencyStates(1);
+        (uint256 tokenIdFiat,,,,,,) = varq.vCurrencyStates(nationId);
         vm.expectRevert("Insufficient nation currency balance");
-        varq.burnvCurrency(1, 1e18);
+        varq.burnvCurrency(nationId, 1e18);
     }
 
     // Test burning with insufficient reserve quota
     function testCannotBurnInsufficientReserveQuota() public {
         // 1. Setup: Create nation state and set oracle rate
-        varq.addvCurrencyState(1, "KES", "rqtKES", address(this));
-        varq.updateOracleRate(1, 1e18);  // 1:1 rate
+        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
+        varq.updateOracleRate(nationId, 1e18);  // 1:1 rate
 
         // 2. Deposit vUSD for minting
         uint256 depositAmount = 1e6 * 1e18;  // 1 million vUSD
@@ -296,10 +273,10 @@ contract testVARQ is Test {
         
         // 3. Mint initial tokens
         uint256 mintAmount = 1e5 * 1e18;  // 100k tokens
-        varq.mintvCurrency(1, mintAmount);
+        varq.mintvCurrency(nationId, mintAmount);
         
         // 4. Get token IDs
-        (uint256 tokenIdFiat, uint256 tokenIdReserve,,,,,) = varq.vCurrencyStates(1);
+        (uint256 tokenIdFiat, uint256 tokenIdReserve,,,,,) = varq.vCurrencyStates(nationId);
         
         // 5. Transfer half of reserve quota tokens to another address
         address otherAddress = address(0x123);
@@ -308,14 +285,14 @@ contract testVARQ is Test {
         
         // 6. Try to burn the full amount of nation currency
         vm.expectRevert("Insufficient reserve quota token balance");
-        varq.burnvCurrency(1, mintAmount);  // This should fail as we only have half the needed reserve tokens
+        varq.burnvCurrency(nationId, mintAmount);  // This should fail as we only have half the needed reserve tokens
     }
 
     // Test successful burning
     function testSuccessfulBurn() public {
         // Set up currency state
-        varq.addvCurrencyState(1, "KES", "rqtKES", address(this));
-        varq.updateOracleRate(1, 1e18);
+        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
+        varq.updateOracleRate(nationId, 1e18);
 
         // Deposit and mint
         uint256 depositAmount = 1e6 * 1e18;
@@ -323,16 +300,16 @@ contract testVARQ is Test {
         varq.depositUSD(depositAmount);
         
         uint256 mintAmount = 1e5 * 1e18;
-        varq.mintvCurrency(1, mintAmount);
+        varq.mintvCurrency(nationId, mintAmount);
 
         // Record balances before burn
-        (uint256 tokenIdFiat, uint256 tokenIdReserve,,,,,) = varq.vCurrencyStates(1);
+        (uint256 tokenIdFiat, uint256 tokenIdReserve,,,,,) = varq.vCurrencyStates(nationId);
         uint256 initialFiatBalance = varq.balanceOf(address(this), tokenIdFiat);
         uint256 initialReserveBalance = varq.balanceOf(address(this), tokenIdReserve);
 
         // Burn half
         uint256 burnAmount = mintAmount / 2;
-        varq.burnvCurrency(1, burnAmount);
+        varq.burnvCurrency(nationId, burnAmount);
 
         // Verify balances
         assertEq(varq.balanceOf(address(this), tokenIdFiat), initialFiatBalance - burnAmount);
@@ -373,7 +350,7 @@ contract testVARQ is Test {
 
     // Test flux ratio calculation with zero oracle rate
     function testCannotCalculateFluxRatioZeroOracle() public {
-        varq.addvCurrencyState(1, "KES", "rqtKES", address(this));
+        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
         
         // Attempt to mint with zero oracle rate
         uint256 depositAmount = 1e6 * 1e18;
@@ -381,7 +358,7 @@ contract testVARQ is Test {
         varq.depositUSD(depositAmount);
 
         vm.expectRevert("Oracle rate cannot be zero");
-        varq.mintvCurrency(1, depositAmount);
+        varq.mintvCurrency(nationId, depositAmount);
     }
 
     // Test reserve ratio calculation with zero S_r
@@ -451,12 +428,12 @@ contract testVARQ is Test {
     function testVCurrencyStateAddedEvent() public {
         vm.expectEmit(true, true, true, true);
         emit vCurrencyStateAdded(1, 2, 3); // nationId=1, tokenIdFiat=2, tokenIdReserve=3
-        varq.addvCurrencyState(1, "KES", "rqtKES", address(this));
+        varq.addvCurrencyState("KES", "rqtKES", address(this));
     }
 
     // Test OracleRateUpdated event
     function testOracleRateUpdatedEvent() public {
-        varq.addvCurrencyState(1, "KES", "rqtKES", address(this));
+        varq.addvCurrencyState("KES", "rqtKES", address(this));
         
         vm.expectEmit(true, true, true, true);
         emit OracleRateUpdated(1, 1e18);
@@ -493,7 +470,7 @@ contract testVARQ is Test {
     // Helper function to initialize S_r for a nation
     function _initializeReserveState(uint256 nationId) internal {
         // Set up initial state
-        varq.addvCurrencyState(nationId, "TST", "rqtTST", address(this));
+        varq.addvCurrencyState("TST", "rqtTST", address(this));
         varq.updateOracleRate(nationId, 1e18);
 
         // Deposit initial vUSD
@@ -533,5 +510,27 @@ contract testVARQ is Test {
         );
         
         varq.depositUSD(depositAmount);
+    }
+
+    function testMintvCurrency() public {
+        // Setup currency state - now returns the nationId
+        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
+        varq.updateOracleRate(nationId, 1e18);
+
+        // Deposit vUSD
+        uint256 depositAmount = 1e6 * 1e18;
+        usdc.approve(address(varq), depositAmount);
+        varq.depositUSD(depositAmount);
+        
+        // Mint vCurrency using the returned nationId
+        uint256 mintAmount = 1e5 * 1e18;
+        varq.mintvCurrency(nationId, mintAmount);
+        
+        // Get token IDs using the returned nationId
+        (uint256 tokenIdFiat, uint256 tokenIdReserve,,,,,) = varq.vCurrencyStates(nationId);
+        
+        // Verify balances
+        assertEq(varq.balanceOf(address(this), tokenIdFiat), mintAmount);
+        assertEq(varq.balanceOf(address(this), tokenIdReserve), mintAmount);
     }
 } 
