@@ -533,4 +533,22 @@ contract testVARQ is Test {
         assertEq(varq.balanceOf(address(this), tokenIdFiat), mintAmount);
         assertEq(varq.balanceOf(address(this), tokenIdReserve), mintAmount);
     }
+
+    function testFluxDiffWith3PercentHigherOracleRate() public {
+        // Setup initial rates
+        uint256 protocolRate = 1e18;  // 1.0
+        uint256 oracleRate = 1.03e18; // 1.03 (3% higher)
+        
+        // Calculate flux difference
+        uint256 fluxDiff = varq.calculateFluxDiff(protocolRate, oracleRate);
+        
+        // Print values for debugging (as percentages)
+        console.log("Protocol Rate:", protocolRate / 1e16, "%");
+        console.log("Oracle Rate:", oracleRate / 1e16, "%");
+        console.log("Flux Diff:", fluxDiff / 1e16, "%");
+        
+        // Assert flux difference is above 0.5 (50%)
+        assertGt(fluxDiff, 0.5e18);    // Greater than 50%
+        assertLt(fluxDiff, 1e18);      // Less than 100%
+    }
 } 

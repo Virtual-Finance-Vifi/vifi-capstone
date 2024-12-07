@@ -206,6 +206,48 @@ contract VARQ is Ownable {
         }
     }
 
+    function calculateFluxDiff(uint256 protocolRate, uint256 oracleRate) public pure returns (uint256) {
+        uint256 difference;
+        if (protocolRate > oracleRate) {
+            difference = protocolRate - oracleRate;
+        } else {
+            difference = oracleRate - protocolRate;
+        }
+
+        // Calculate the relative difference as a proportion of oracleRate
+        uint256 relativeDifference = (difference * 1e18) / oracleRate;  // This gives us 0.03e18 for 3%
+
+        // k value for sensitivity - dramatically increased
+        uint256 k = 241049 * 1e14;  // Increased by 100x again (about 231 billion)
+
+        // Calculate exponent term with better scaling
+        uint256 kx = (k * relativeDifference) / 1e18;  // Direct scaling
+        
+        // Calculate e^(-kx)
+        uint256 expKx = approximateExp(kx);
+
+        // Return 1 - e^(-kx)
+        return 1e18 - expKx;
+    }
+
+    function approximateExp(uint256 x) internal pure returns (uint256) {
+        // Start with 1.0
+        uint256 result = 1e18;
+        
+        // Add x term
+        result = result - ((x * 1e18) / 1e18);
+        
+        // Add x^2/2 term
+        uint256 term = (x * x) / 1e18;  // x^2
+        result = result + ((term * 1e18) / 2) / 1e18;
+        
+        // Add x^3/6 term
+        term = (term * x) / 1e18;  // x^3
+        result = result - ((term * 1e18) / 6) / 1e18;
+        
+        return result;
+    }
+
     function _mint(address receiver, uint256 id, uint256 amount) internal {
         tokenMetadatas[id].totalSupply += amount;
         balanceOf[receiver][id] += amount;
