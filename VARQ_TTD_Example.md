@@ -28,13 +28,13 @@ varq.mintvCurrency(1, 1_000_000e18);
 
 ### State After First Mint
 
-S_u (USD Supply): 1,000,000
-S_f (TTD Supply): 6,800,000 (1M 6.8)
-S_r (Reserve Supply): 1,000,000
-Protocol Rate: 6.8 (S_f/S_r)
-User Receives:
-6.8M vTTD (ID: 2)
-1M vRQT_TTD (ID: 3)
+-S_u (USD Supply): 1,000,000
+-S_f (TTD Supply): 6,800,000 (1M 6.8)
+-S_r (Reserve Supply): 1,000,000
+-Protocol Rate: 6.8 (S_f/S_r)
+-User Receives:
+-6.8M vTTD (ID: 2)
+-1M vRQT_TTD (ID: 3)
 
 
 ## 3. Oracle Rate Update
