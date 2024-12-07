@@ -5,11 +5,12 @@ This walkthrough demonstrates the VARQ protocol handling the Trinidad and Tobago
 ## 1. Initial Currency Setup
 
 First, we create a new currency state for TTD:
-
+```
 varq.addvCurrencyState("TTD", "rqtTTD", oracleUpdater);
 //Creates:
 // - vTTD (ID: 2)
 // - vRQT_TTD (ID: 3)
+```
 
 Set the initial oracle rate (1 USD = 6.8 TTD):
 
