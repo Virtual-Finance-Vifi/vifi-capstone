@@ -37,37 +37,73 @@ contract VARQ is Ownable, IVARQ {
     }
 
     function addvCurrencyState(
-        string memory fiatName, 
-        string memory reserveName, 
-        address oracleUpdater
-    ) public onlyOwner returns (uint256) {
-        uint256 currencyId = nextvCurrencyId++;  // Auto-increment nation ID
-        
-        require(_vCurrencyStates[currencyId].tokenIdFiat == 0, "Nation-state already exists");
-        require(oracleUpdater != address(0), "Oracle updater cannot be zero address");
-        
-        // Use nextTokenId for token IDs
-        uint256 tokenIdFiat = nextTokenId;
-        uint256 tokenIdReserve = nextTokenId + 1;
-        nextTokenId += 2;  // Increment by 2 for the next pair
+    string memory _name,
+    string memory _reserveName,
+    address _oracleUpdater
+) external onlyOwner returns (uint256) {
+    require(_oracleUpdater != address(0), "Oracle updater cannot be zero address");
 
-        _createTokenProxy(tokenIdFiat, fiatName, string(abi.encodePacked("v", fiatName)), 18, currencyId);
-        _createTokenProxy(tokenIdReserve, reserveName, string(abi.encodePacked("vRQT_", fiatName)), 18, currencyId);
+    // Deploy reserve token first (this will be currency0)
+    bytes32 reserveSalt = keccak256(abi.encodePacked("RESERVE", nextvCurrencyId));
+    vTokens reserveToken = new vTokens{salt: reserveSalt}(
+        address(this),
+        nextTokenId,
+        _reserveName,
+        string.concat("vRQT_", _name),
+        18,
+        nextvCurrencyId
+    );
 
-        _vCurrencyStates[currencyId] = vCurrencyState(
-            tokenIdFiat, 
-            tokenIdReserve, 
-            0, 
-            0, 
-            0, 
-            0, 
-            oracleUpdater
-        );
+    // Store metadata for reserve token
+    _tokenMetadatas[nextTokenId] = vTokenMetadata({
+        name: _reserveName,
+        symbol: string.concat("vRQT_", _name),
+        decimals: 18,
+        totalSupply: 0,
+        proxyAddress: address(reserveToken),
+        vCurrencyId: nextvCurrencyId
+    });
 
-        emit vCurrencyStateAdded(currencyId, tokenIdFiat, tokenIdReserve);
+    // Deploy fiat token second with salt to ensure higher address
+    bytes32 fiatSalt = keccak256(abi.encodePacked("FIAT", nextvCurrencyId));
+    vTokens fiatToken = new vTokens{salt: fiatSalt}(
+        address(this),
+        nextTokenId + 1,
+        _name,
+        string.concat("v", _name),
+        18,
+        nextvCurrencyId
+    );
 
-        return currencyId;
-    }
+    // Store metadata for fiat token
+    _tokenMetadatas[nextTokenId + 1] = vTokenMetadata({
+        name: _name,
+        symbol: string.concat("v", _name),
+        decimals: 18,
+        totalSupply: 0,
+        proxyAddress: address(fiatToken),
+        vCurrencyId: nextvCurrencyId
+    });
+
+    uint256 currencyId = nextvCurrencyId;
+    nextvCurrencyId++;
+
+    _vCurrencyStates[currencyId] = vCurrencyState({
+        tokenIdFiat: nextTokenId + 1,
+        tokenIdReserve: nextTokenId,
+        oracleRate: 0,
+        S_u: 0,
+        S_f: 0,
+        S_r: 0,
+        oracleUpdater: _oracleUpdater
+    });
+
+    emit vCurrencyStateAdded(currencyId, nextTokenId + 1, nextTokenId);
+
+    nextTokenId += 2;
+
+    return currencyId;
+}
 
     function updateOracleRate(uint256 currencyId, uint256 newRate) public {
         vCurrencyState storage nation = _vCurrencyStates[currencyId];
@@ -307,5 +343,17 @@ contract VARQ is Ownable, IVARQ {
 
     function vCurrencyStates(uint256 currencyId) external view returns (vCurrencyState memory) {
         return _vCurrencyStates[currencyId];
+    }
+
+    function getAllowance(address owner, address spender, uint256 id) public view returns (uint256) {
+        return allowance[owner][spender][id];
+    }
+
+    function approveFor(address owner, address spender, uint256 id, uint256 amount) public returns (bool) {
+        // Ensure that only the proxy contract can call this function
+        require(msg.sender == _tokenMetadatas[id].proxyAddress, "Only proxy can approve");
+        allowance[owner][spender][id] = amount;
+        emit Approval(owner, spender, id, amount);
+        return true;
     }
 }

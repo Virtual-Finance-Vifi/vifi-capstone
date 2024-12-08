@@ -3,7 +3,6 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IVARQ.sol";
-import "./VARQ.sol";
 import "./interfaces/IvTokens.sol";
 
 contract vTokens is IvTokens {
@@ -36,23 +35,27 @@ contract vTokens is IvTokens {
     }
 
     function totalSupply() public view returns (uint256) {
-        VARQ parentContractInstance = VARQ(parentContract);
+        IVARQ parentContractInstance = IVARQ(parentContract);
         return parentContractInstance.calculateTotalSupply(tokenId);
     }
 
     function balanceOf(address owner) public view returns (uint256) {
-        return IERC6909(parentContract).balanceOf(owner, tokenId);
+        return IVARQ(parentContract).balanceOf(owner, tokenId);
     }
 
     function transfer(address receiver, uint256 amount) public returns (bool) {
-        return IERC6909(parentContract).transfer(receiver, tokenId, amount);
+        return IVARQ(parentContract).transfer(receiver, tokenId, amount);
     }
 
     function approve(address spender, uint256 amount) public returns (bool) {
-        return IERC6909(parentContract).approve(spender, tokenId, amount);
+        return IVARQ(parentContract).approveFor(msg.sender, spender, tokenId, amount);
     }
 
     function transferFrom(address sender, address receiver, uint256 amount) public returns (bool) {
-        return IERC6909(parentContract).transferFrom(sender, receiver, tokenId, amount);
+        return IVARQ(parentContract).transferFrom(sender, receiver, tokenId, amount);
+    }
+
+    function allowance(address owner, address spender) public view returns (uint256) {
+        return IVARQ(parentContract).allowance(owner, spender, tokenId);
     }
 }

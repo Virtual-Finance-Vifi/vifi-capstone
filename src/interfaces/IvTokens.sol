@@ -11,6 +11,7 @@ interface IvTokens {
     function totalSupply() external view returns (uint256);
     function balanceOf(address owner) external view returns (uint256);
     function vCurrencyId() external view returns (uint256);
+    function allowance(address owner, address spender) external view returns (uint256);
 
     // State-changing functions
     function transfer(address receiver, uint256 amount) external returns (bool);

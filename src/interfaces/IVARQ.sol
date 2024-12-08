@@ -49,4 +49,13 @@ interface IVARQ {
     event Approval(address indexed owner, address indexed spender, uint256 id, uint256 amount);
     event OperatorSet(address indexed owner, address indexed operator, bool approved);
     event OracleUpdated(address newUpdater);
+
+    // Add ERC6909 functions
+    function transfer(address receiver, uint256 id, uint256 amount) external returns (bool);
+    function transferFrom(address sender, address receiver, uint256 id, uint256 amount) external returns (bool);
+    function approve(address spender, uint256 id, uint256 amount) external returns (bool);
+    function allowance(address owner, address spender, uint256 id) external view returns (uint256);
+    function setOperator(address operator, bool approved) external returns (bool);
+    function isOperator(address owner, address operator) external view returns (bool);
+    function approveFor(address owner, address spender, uint256 id, uint256 amount) external returns (bool);
 }
