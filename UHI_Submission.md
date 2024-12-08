@@ -8,7 +8,7 @@
 
 ViFi is revolutionizing access to FX liquidity for institutional and retail users in Africa and LATAM, addressing the $540B annual market for stablecoins in these regions. By integrating **local stablecoins** with **deep DeFi liquidity**, ViFi ensures users access the **best FX rates at any volume**
 
-For the programme, we undertook a complete redesign of our protocol and including integration of **Uniswap Hooks**, **EigenLayer** via Reclaim Protocol. Our protocol dynamically balances FX rates, ensuring price discovery is transparent, decentralized, and highly efficient for frontier markets. The protocol uses the Central Bank rate via the Oracle or AVS as a starting rate and then reprices the FX rate in a free market with our dual token model. By pairing the local stablecoin with a speculative token that functions as a call option on USD, we create a buffer against volatilitty and open up FX arbitrage opportunities.
+For the programme, we undertook a complete redesign of our protocol including integration of **Uniswap Hooks** and **EigenLayer** via Reclaim Protocol. Our protocol dynamically balances FX rates, ensuring price discovery is transparent, decentralized, and highly efficient for frontier markets. The protocol uses the Central Bank rate via an Oracle or EigenLayer AVS as a starting rate and then reprices the FX rate in a free market with our dual token model. By pairing the local stablecoin with a speculative token that functions as a call option on USD, we create a buffer against volatilitty and open up FX arbitrage opportunities.
 
 ---
 
@@ -16,13 +16,13 @@ For the programme, we undertook a complete redesign of our protocol and includin
 
 ## Links
 
-- **[Demo Video](#)** (Coming soon!)
+- **[Demo Video](https://youtu.be/_GI2W6YdQBQ)** (Coming soon!)
 - **[Project Deck](https://docsend.com/view/5zcc88yd4hmnri2y)** (Comprehensive explanation of ViFi’s vision and technical implementation)
 - **Key Repositories:**
   - **[ViFi Protocol](https://github.com/Virtual-Finance-Vifi/vifi-capstone)** (Core smart contracts and integrations)
   - **[Reclaim zkFetch dApp](https://github.com/Virtual-Finance-Vifi/cbk-reader)** (On-chain FX rate provisioning via zkProofs)
 
-### **Key Features and Innovations**
+### **Key Features**
 
 1. **Dynamic Rebalancing via Uniswap Hooks:**
 
