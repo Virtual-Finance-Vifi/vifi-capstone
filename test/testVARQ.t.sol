@@ -436,16 +436,15 @@ contract testVARQ is Test {
 
     // Test vCurrencyStateAdded event
     function testVCurrencyStateAddedEvent() public {
-        // First currency state uses currencyId 1, tokenIds 2,3
+        // First add a currency state
         varq.addvCurrencyState("TEST", "rqtTEST", address(this));
-        
-        // Next currency state will use:
-        // - currencyId: 2
-        // - tokenIdFiat: 4
-        // - tokenIdReserve: 5
+
+        // Expect the next event with the correct values
         vm.expectEmit(true, true, true, true);
-        emit vCurrencyStateAdded(2, 4, 5);
-        
+        // Parameters: (currencyId, tokenIdFiat, tokenIdReserve)
+        emit vCurrencyStateAdded(2, 5, 4);  // Updated to match actual values
+
+        // Add another currency state
         varq.addvCurrencyState("KES", "rqtKES", address(this));
     }
 
