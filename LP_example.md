@@ -82,3 +82,27 @@ Alice withdraws from the pool and receives:
 
 ### Note:
 Alice would need another LP to fully exit her position.
+
+---
+
+## Assuming another LP came in
+
+### Pool Ratio:
+- **1 vRQT : 2 vKES**
+
+Bob swaps the following:
+- **Input:** 25,291.83 vRQT
+- **Output:** ~50,583.66 vKES
+
+### Remaining Token:
+- **76,270.67 vRQT**
+- **9,762,645.91 vKES**
+
+which converted to:
+- **76,270.67 vUSD**
+
+Alice total earnings would be:
+
+**998,437.5 + 76,270.67 vUSD**
+=
+**1,074,708.17 vUSD**
