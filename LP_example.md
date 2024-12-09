@@ -103,6 +103,6 @@ which converted to:
 
 Alice total earnings would be:
 
--**998,437.5 + 76,270.67 vUSD**
+- **998,437.5 + 76,270.67 vUSD**
 - Total vUSD
--**1,074,708.17 vUSD**
+- **1,074,708.17 vUSD**
