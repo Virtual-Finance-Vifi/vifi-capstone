@@ -16,7 +16,7 @@ For the programme, we undertook a complete redesign of our protocol including in
 
 ## Links
 
-- **[Demo Video](https://youtu.be/_GI2W6YdQBQ)** (Coming soon!)
+- **[Demo Video](https://youtu.be/_GI2W6YdQBQ)**
 - **[Project Deck](https://docsend.com/view/5zcc88yd4hmnri2y)** (Comprehensive explanation of ViFi’s vision and technical implementation)
 - **Key Repositories:**
   - **[ViFi Protocol](https://github.com/Virtual-Finance-Vifi/vifi-capstone)** (Core smart contracts and integrations)
