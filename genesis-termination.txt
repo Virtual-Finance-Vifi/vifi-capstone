@@ -1,0 +1,33 @@
+vCurrency Genesis:
+
+There needs to be a vCurrency proposal which has the ticker symbol name and orcale address
+
+when the owner of the VARQ approves the proposal
+
+ it allows users to stake vUSD and indicate an opening pair ratio
+
+once a threshold of 10M vUSD is hit
+
+the owner can then begin the vCurrency Gensis.
+
+a weighted average of vusd staked and pair ratio would determine the final opening ratio
+
+all the vUSD is then converted into a vCurrency pair and added as liquidity into a AMM unsiwap v2 pool
+
+the LP is locked for 30 days.
+
+the LP accures yield from the underlaying callateral and LP can claim vUSD on withdrawal.
+
+there is a vCurrency termination whereby
+
+if the Liquity reserves in either vRQT or vFiat falls below 10% of the supply, swaps are closed
+
+vRQT to vFiat raio is compared aginst all the vUSD burned to create it (S_u)
+
+this then prices in a single token claim to vUSD
+
+so vFiat can be claimed for vUSD at the protocol rate
+
+and vRQT can be claimed at the last raio of the uniswap pool
+
+effectively allow no new vCurrency mints, but direct claims to vUSD
