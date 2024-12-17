@@ -7,14 +7,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./vTokens.sol";
 import "./interfaces/IVARQ.sol";
 
-interface IERC6909 {
-    function transfer(address receiver, uint256 id, uint256 amount) external returns (bool);
-    function transferFrom(address sender, address receiver, uint256 id, uint256 amount) external returns (bool);
-    function approve(address spender, uint256 id, uint256 amount) external returns (bool);
-    function balanceOf(address owner, uint256 id) external view returns (uint256);
-    function totalSupply(uint256 id) external view returns (uint256);
-}
-
 contract VARQ is Ownable, IVARQ {
 
     IERC20 public usdcToken;
@@ -30,6 +22,24 @@ contract VARQ is Ownable, IVARQ {
     // Add counters for both token IDs and nation IDs
     uint256 private nextTokenId = 2;    // Start at 2 since vUSD is token ID 1
     uint256 private nextvCurrencyId = 1;   // Start nation IDs at 1
+
+    // Add these to the VARQ contract
+
+    struct vAMMPool {
+        uint256 reserveFiat;    // Reserve of fiat token
+        uint256 reserveReserve; // Reserve of reserve token
+        uint256 kLast;          // Last K value (reserve0 * reserve1)
+    }
+
+    // Mapping to store pool data for each currency
+    mapping(uint256 => vAMMPool) public vAMMPools;
+
+    // Minimum liquidity locked forever
+    uint256 private constant MINIMUM_LIQUIDITY = 1000;
+
+    // Track liquidity tokens for each provider
+    mapping(uint256 => mapping(address => uint256)) public liquidityBalance;
+    mapping(uint256 => uint256) public totalLiquidity;
 
     constructor(address initialOwner, address _usdcToken) Ownable(initialOwner) {
         usdcToken = IERC20(_usdcToken);
@@ -355,5 +365,169 @@ contract VARQ is Ownable, IVARQ {
         allowance[owner][spender][id] = amount;
         emit Approval(owner, spender, id, amount);
         return true;
+    }
+
+    // Add liquidity to the vAMM pool
+    function addLiquidity(
+        uint256 currencyId,
+        uint256 amountFiatDesired,
+        uint256 amountReserveDesired,
+        uint256 amountFiatMin,
+        uint256 amountReserveMin,
+        address to
+    ) external returns (uint256 amountFiat, uint256 amountReserve, uint256 liquidityMinted) {
+        vCurrencyState storage nation = _vCurrencyStates[currencyId];
+        vAMMPool storage pool = vAMMPools[currencyId];
+        
+        // Calculate amounts
+        if (pool.reserveFiat == 0 && pool.reserveReserve == 0) {
+            amountFiat = amountFiatDesired;
+            amountReserve = amountReserveDesired;
+            pool.kLast = amountFiat * amountReserve;
+        } else {
+            uint256 amountReserveOptimal = quote(amountFiatDesired, pool.reserveFiat, pool.reserveReserve);
+            if (amountReserveOptimal <= amountReserveDesired) {
+                require(amountReserveOptimal >= amountReserveMin, "INSUFFICIENT_RESERVE_AMOUNT");
+                amountFiat = amountFiatDesired;
+                amountReserve = amountReserveOptimal;
+            } else {
+                uint256 amountFiatOptimal = quote(amountReserveDesired, pool.reserveReserve, pool.reserveFiat);
+                require(amountFiatOptimal <= amountFiatDesired);
+                require(amountFiatOptimal >= amountFiatMin, "INSUFFICIENT_FIAT_AMOUNT");
+                amountFiat = amountFiatOptimal;
+                amountReserve = amountReserveDesired;
+            }
+        }
+
+        // Calculate liquidity tokens to mint
+        uint256 liquidity;
+        if (totalLiquidity[currencyId] == 0) {
+            liquidity = sqrt(amountFiat * amountReserve) - MINIMUM_LIQUIDITY;
+            // Lock minimum liquidity forever
+            liquidityBalance[currencyId][address(0)] = MINIMUM_LIQUIDITY;
+        } else {
+            liquidity = min(
+                (amountFiat * totalLiquidity[currencyId]) / pool.reserveFiat,
+                (amountReserve * totalLiquidity[currencyId]) / pool.reserveReserve
+            );
+        }
+        require(liquidity > 0, "INSUFFICIENT_LIQUIDITY_MINTED");
+
+        // Update liquidity tracking
+        liquidityBalance[currencyId][to] += liquidity;
+        totalLiquidity[currencyId] += liquidity;
+
+        // Transfer tokens to pool
+        transferFrom(msg.sender, address(this), nation.tokenIdFiat, amountFiat);
+        transferFrom(msg.sender, address(this), nation.tokenIdReserve, amountReserve);
+
+        // Update pool reserves
+        pool.reserveFiat += amountFiat;
+        pool.reserveReserve += amountReserve;
+        pool.kLast = pool.reserveFiat * pool.reserveReserve;
+
+        emit LiquidityAdded(currencyId, amountFiat, amountReserve, to);
+
+        return (amountFiat, amountReserve, liquidity);
+    }
+
+    // Swap tokens using vAMM
+    function swap(
+        uint256 currencyId,
+        uint256 amountIn,
+        uint256 minAmountOut,
+        bool isFiatIn,
+        address to
+    ) external returns (uint256 amountOut) {
+        vCurrencyState storage nation = _vCurrencyStates[currencyId];
+        vAMMPool storage pool = vAMMPools[currencyId];
+        
+        require(amountIn > 0, "INSUFFICIENT_INPUT_AMOUNT");
+        require(pool.reserveFiat > 0 && pool.reserveReserve > 0, "INSUFFICIENT_LIQUIDITY");
+
+        uint256 reserveIn = isFiatIn ? pool.reserveFiat : pool.reserveReserve;
+        uint256 reserveOut = isFiatIn ? pool.reserveReserve : pool.reserveFiat;
+
+        // Calculate amount out using constant product formula
+        amountOut = getAmountOut(amountIn, reserveIn, reserveOut);
+        require(amountOut >= minAmountOut, "INSUFFICIENT_OUTPUT_AMOUNT");
+
+        // Transfer tokens
+        uint256 tokenIdIn = isFiatIn ? nation.tokenIdFiat : nation.tokenIdReserve;
+        uint256 tokenIdOut = isFiatIn ? nation.tokenIdReserve : nation.tokenIdFiat;
+
+        transferFrom(msg.sender, address(this), tokenIdIn, amountIn);
+        transfer(to, tokenIdOut, amountOut);
+
+        // Update reserves
+        if (isFiatIn) {
+            pool.reserveFiat += amountIn;
+            pool.reserveReserve -= amountOut;
+        } else {
+            pool.reserveReserve += amountIn;
+            pool.reserveFiat -= amountOut;
+        }
+
+        pool.kLast = pool.reserveFiat * pool.reserveReserve;
+        
+        emit Swap(currencyId, msg.sender, to, amountIn, amountOut, isFiatIn);
+    }
+
+    // Helper functions
+    function quote(uint256 amountA, uint256 reserveA, uint256 reserveB) public pure returns (uint256) {
+        require(amountA > 0, "INSUFFICIENT_AMOUNT");
+        require(reserveA > 0 && reserveB > 0, "INSUFFICIENT_LIQUIDITY");
+        return (amountA * reserveB) / reserveA;
+    }
+
+    function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut) public pure returns (uint256) {
+        require(amountIn > 0, "INSUFFICIENT_INPUT_AMOUNT");
+        require(reserveIn > 0 && reserveOut > 0, "INSUFFICIENT_LIQUIDITY");
+        
+        uint256 amountInWithFee = amountIn * 997; // 0.3% fee
+        uint256 numerator = amountInWithFee * reserveOut;
+        uint256 denominator = (reserveIn * 1000) + amountInWithFee;
+        return numerator / denominator;
+    }
+
+    // Helper function to calculate square root
+    function sqrt(uint256 y) internal pure returns (uint256 z) {
+        if (y > 3) {
+            z = y;
+            uint256 x = y / 2 + 1;
+            while (x < z) {
+                z = x;
+                x = (y / x + x) / 2;
+            }
+        } else if (y != 0) {
+            z = 1;
+        }
+    }
+
+    // Helper function to get minimum value
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
+    }
+
+    // Events
+    event LiquidityAdded(uint256 indexed currencyId, uint256 amountFiat, uint256 amountReserve, address indexed to);
+    event Swap(uint256 indexed currencyId, address indexed sender, address indexed to, uint256 amountIn, uint256 amountOut, bool isFiatIn);
+    event LiquidityRemoved(
+        uint256 indexed currencyId,
+        address indexed provider,
+        address indexed to,
+        uint256 fiatAmount,
+        uint256 reserveAmount,
+        uint256 liquidityBurned
+    );
+
+    // Add view function to check liquidity
+    function getLiquidityBalance(uint256 currencyId, address provider) external view returns (uint256) {
+        return liquidityBalance[currencyId][provider];
+    }
+
+    // Add view function to check total liquidity
+    function getTotalLiquidity(uint256 currencyId) external view returns (uint256) {
+        return totalLiquidity[currencyId];
     }
 }
