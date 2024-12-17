@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Start SSH agent and store the environment variables
+eval "$(ssh-agent -s)"
+
+# Add your GitHub SSH key
+ssh-add ~/.ssh/id_ed25519_github
+
+# Test GitHub connection
+ssh -T git@github.com
+
+# Print status
+echo "SSH agent started and key added"≈

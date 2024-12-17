@@ -109,73 +109,75 @@ contract VARQ is Ownable, IVARQ {
     }
 
     function addvCurrencyState(
-    string memory _name,
-    string memory _reserveName,
-    address _oracleUpdater
-) external onlyOwner returns (uint256) {
-    require(_oracleUpdater != address(0), "Oracle updater cannot be zero address");
+        string memory _name,
+        string memory _symbol,
+        address _oracleUpdater
+    ) internal returns (uint256) {
+        require(_oracleUpdater != address(0), "Oracle updater cannot be zero address");
 
-    // Deploy reserve token first (this will be currency0)
-    bytes32 reserveSalt = keccak256(abi.encodePacked("RESERVE", nextvCurrencyId));
-    vTokens reserveToken = new vTokens{salt: reserveSalt}(
-        address(this),
-        nextTokenId,
-        _reserveName,
-        string.concat("vRQT_", _name),
-        18,
-        nextvCurrencyId
-    );
+        // Deploy reserve token first (this will be currency0)
+        bytes32 reserveSalt = keccak256(abi.encodePacked("RESERVE", nextvCurrencyId));
+        vTokens reserveToken = new vTokens{salt: reserveSalt}(
+            address(this),
+            nextTokenId,
+            _symbol,
+            string.concat("vRQT_", _name),
+            18,
+            nextvCurrencyId
+        );
 
-    // Store metadata for reserve token
-    _tokenMetadatas[nextTokenId] = vTokenMetadata({
-        name: _reserveName,
-        symbol: string.concat("vRQT_", _name),
-        decimals: 18,
-        totalSupply: 0,
-        proxyAddress: address(reserveToken),
-        vCurrencyId: nextvCurrencyId
-    });
+        // Store metadata for reserve token
+        _tokenMetadatas[nextTokenId] = vTokenMetadata({
+            name: _symbol,
+            symbol: string.concat("vRQT_", _name),
+            decimals: 18,
+            totalSupply: 0,
+            proxyAddress: address(reserveToken),
+            vCurrencyId: nextvCurrencyId
+        });
 
-    // Deploy fiat token second with salt to ensure higher address
-    bytes32 fiatSalt = keccak256(abi.encodePacked("FIAT", nextvCurrencyId));
-    vTokens fiatToken = new vTokens{salt: fiatSalt}(
-        address(this),
-        nextTokenId + 1,
-        _name,
-        string.concat("v", _name),
-        18,
-        nextvCurrencyId
-    );
+        uint256 reserveTokenId = nextTokenId++;
 
-    // Store metadata for fiat token
-    _tokenMetadatas[nextTokenId + 1] = vTokenMetadata({
-        name: _name,
-        symbol: string.concat("v", _name),
-        decimals: 18,
-        totalSupply: 0,
-        proxyAddress: address(fiatToken),
-        vCurrencyId: nextvCurrencyId
-    });
+        // Deploy fiat token second
+        bytes32 fiatSalt = keccak256(abi.encodePacked("FIAT", nextvCurrencyId));
+        vTokens fiatToken = new vTokens{salt: fiatSalt}(
+            address(this),
+            nextTokenId,
+            _name,
+            string.concat("v", _name),
+            18,
+            nextvCurrencyId
+        );
 
-    uint256 currencyId = nextvCurrencyId;
-    nextvCurrencyId++;
+        // Store metadata for fiat token
+        _tokenMetadatas[nextTokenId] = vTokenMetadata({
+            name: _name,
+            symbol: string.concat("v", _name),
+            decimals: 18,
+            totalSupply: 0,
+            proxyAddress: address(fiatToken),
+            vCurrencyId: nextvCurrencyId
+        });
 
-    _vCurrencyStates[currencyId] = vCurrencyState({
-        tokenIdFiat: nextTokenId + 1,
-        tokenIdReserve: nextTokenId,
-        oracleRate: 0,
-        S_u: 0,
-        S_f: 0,
-        S_r: 0,
-        oracleUpdater: _oracleUpdater
-    });
+        uint256 fiatTokenId = nextTokenId++;
 
-    emit vCurrencyStateAdded(currencyId, nextTokenId + 1, nextTokenId);
+        // Create vCurrency state
+        _vCurrencyStates[nextvCurrencyId] = vCurrencyState({
+            tokenIdFiat: fiatTokenId,
+            tokenIdReserve: reserveTokenId,
+            oracleRate: 1e18,  // Initial 1:1 rate
+            S_u: 0,
+            S_f: 0,
+            S_r: 0,
+            oracleUpdater: _oracleUpdater
+        });
 
-    nextTokenId += 2;
+        uint256 currencyId = nextvCurrencyId++;
 
-    return currencyId;
-}
+        emit vCurrencyStateAdded(currencyId, fiatTokenId, reserveTokenId);
+
+        return currencyId;
+    }
 
     function updateOracleRate(uint256 currencyId, uint256 newRate) public {
         vCurrencyState storage nation = _vCurrencyStates[currencyId];
@@ -368,11 +370,29 @@ contract VARQ is Ownable, IVARQ {
                               ERC6909 LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function transfer(address receiver, uint256 id, uint256 amount) public virtual returns (bool) {
-        balanceOf[msg.sender][id] -= amount;
-        balanceOf[receiver][id] += amount;
-        emit Transfer(msg.sender, msg.sender, receiver, id, amount);
+    function transfer(address to, uint256 id, uint256 amount) external override returns (bool) {
+        vCurrencyPool storage pool = pools[_tokenMetadatas[id].vCurrencyId];
+        LockedLP storage userLock = pool.userLocks[msg.sender];
+        
+        // If this is an LP token and user has a lock, prevent transfer
+        if (userLock.liquidityAmount > 0 && 
+            block.timestamp < userLock.unlockTime && 
+            !userLock.claimed) {
+            revert("LP tokens locked");
+        }
+        
+        _transfer(msg.sender, to, id, amount);
         return true;
+    }
+
+    function _transfer(address from, address to, uint256 id, uint256 amount) internal {
+        require(from != address(0), "Transfer from zero address");
+        require(to != address(0), "Transfer to zero address");
+        
+        balanceOf[from][id] -= amount;
+        balanceOf[to][id] += amount;
+        
+        emit Transfer(msg.sender, from, to, id, amount);
     }
 
     function transferFrom(address sender, address receiver, uint256 id, uint256 amount) public virtual returns (bool) {
@@ -617,18 +637,19 @@ contract VARQ is Ownable, IVARQ {
         vCurrencyPool storage pool = pools[currencyId];
         require(pool.isTerminated, "Not terminated");
         
+        uint256 vusdAmount;
         if (isFiat) {
             // Claim vFiat at protocol rate
-            uint256 vusdAmount = _calculateVUSDClaim(currencyId, amount, true);
+            vusdAmount = _calculateVUSDClaim(currencyId, amount, true);
             _burn(msg.sender, _vCurrencyStates[currencyId].tokenIdFiat, amount);
             _mint(msg.sender, 1, vusdAmount);
         } else {
             // Claim vRQT at termination rate
-            uint256 vusdAmount = _calculateVUSDClaim(currencyId, amount, false);
+            vusdAmount = _calculateVUSDClaim(currencyId, amount, false);
             _burn(msg.sender, _vCurrencyStates[currencyId].tokenIdReserve, amount);
             _mint(msg.sender, 1, vusdAmount);
         }
-        
+
         emit VCurrencyClaimed(currencyId, msg.sender, amount, vusdAmount, isFiat);
     }
 
@@ -668,7 +689,7 @@ contract VARQ is Ownable, IVARQ {
         uint256 indexed currencyId,
         address indexed user,
         uint256 amount,
-        uint256 vusdAmount,
+        uint256 vusdReceived,
         bool isFiat
     );
 
@@ -996,7 +1017,7 @@ contract VARQ is Ownable, IVARQ {
     event LPUnlocked(
         uint256 indexed currencyId,
         address indexed user,
-        uint256 vusdReturned,
+        uint256 vusdReturned,    // Total vUSD returned including yield
         uint256 liquidityBurned
     );
 
@@ -1011,19 +1032,4 @@ contract VARQ is Ownable, IVARQ {
         address indexed user,
         uint256 yieldAmount
     );
-
-    // Add function to prevent LP token transfers during lock
-    function transfer(address to, uint256 id, uint256 amount) external override returns (bool) {
-        vCurrencyPool storage pool = pools[_tokenMetadatas[id].vCurrencyId];
-        LockedLP storage userLock = pool.userLocks[msg.sender];
-        
-        // If this is an LP token and user has a lock, prevent transfer
-        if (userLock.liquidityAmount > 0 && 
-            block.timestamp < userLock.unlockTime && 
-            !userLock.claimed) {
-            revert("LP tokens locked");
-        }
-        
-        return super.transfer(to, id, amount);
-    }
 }

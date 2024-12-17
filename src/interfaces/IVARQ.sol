@@ -58,4 +58,46 @@ interface IVARQ {
     function setOperator(address operator, bool approved) external returns (bool);
     function isOperator(address owner, address operator) external view returns (bool);
     function approveFor(address owner, address spender, uint256 id, uint256 amount) external returns (bool);
+
+    // Add new structs
+    struct vCurrencyPool {
+        address uniswapPair;
+        uint256 lockEndTime;
+        uint256 yieldAccrued;
+        bool isTerminated;
+        uint256 terminationRate;
+        uint256 totalLockedVUSD;
+        uint256 lastYieldUpdate;
+        uint256 yieldPerTokenStored;
+        uint256 totalRQTStaked;
+    }
+
+    struct vCurrencyProposal {
+        string name;
+        string symbol;
+        address oracleAddress;
+        uint256 totalStaked;
+        uint256 proposedRatio;
+        uint256 minStakeRequired;
+        bool isActive;
+    }
+
+    struct StakeInfo {
+        uint256 amountStaked;
+        uint256 proposedRatio;
+        uint256 timestamp;
+    }
+
+    struct LockedLP {
+        uint256 vusdAmount;
+        uint256 liquidityAmount;
+        uint256 unlockTime;
+        bool claimed;
+    }
+
+    // Add new functions
+    function checkTerminationConditions(uint256 currencyId) external returns (bool);
+    function claimTerminatedVCurrency(uint256 currencyId, uint256 amount, bool isFiat) external;
+    function earned(uint256 currencyId, address user) external view returns (uint256);
+    function withdrawLockedLP(uint256 currencyId) external;
 }
