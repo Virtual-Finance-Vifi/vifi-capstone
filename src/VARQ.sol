@@ -9,30 +9,36 @@ import "./interfaces/IVARQ.sol";
 
 contract VARQ is Ownable, IVARQ {
 
-    IERC20 public usdcToken;
+    // Define structs first
+    struct ExtendedVCurrencyPool {
+        // Include all fields from interface
+        address uniswapPair;
+        uint256 lockEndTime;
+        uint256 yieldAccrued;
+        bool isTerminated;
+        uint256 terminationRate;
+        uint256 totalLockedVUSD;
+        uint256 lastYieldUpdate;
+        uint256 yieldPerTokenStored;
+        uint256 totalRQTStaked;
+        // Add mappings here
+        mapping(address => LockedLP) userLocks;
+        mapping(address => uint256) userYieldPerTokenPaid;
+        mapping(address => uint256) yields;
+    }
 
+    // State variables
+    IERC20 public usdcToken;
     mapping(uint256 => vTokenMetadata) private _tokenMetadatas;
     mapping(uint256 => vCurrencyState) private _vCurrencyStates;
-
-    mapping(address => mapping(uint256 => uint256)) public balanceOf;
-    mapping(address => mapping(address => mapping(uint256 => uint256))) public allowance;
-    mapping(address => mapping(address => bool)) public isOperator;
-    mapping(uint256 => address) public tokenProxies;
+    mapping(uint256 => ExtendedVCurrencyPool) public pools;  // Now struct is defined before use
+    mapping(uint256 => vAMMPool) public vAMMPools;
 
     // Add counters for both token IDs and nation IDs
     uint256 private nextTokenId = 2;    // Start at 2 since vUSD is token ID 1
     uint256 private nextvCurrencyId = 1;   // Start nation IDs at 1
 
     // Add these to the VARQ contract
-
-    struct vAMMPool {
-        uint256 reserveFiat;    // Reserve of fiat token
-        uint256 reserveReserve; // Reserve of reserve token
-        uint256 kLast;          // Last K value (reserve0 * reserve1)
-    }
-
-    // Mapping to store pool data for each currency
-    mapping(uint256 => vAMMPool) public vAMMPools;
 
     // Minimum liquidity locked forever
     uint256 private constant MINIMUM_LIQUIDITY = 1000;
@@ -41,59 +47,11 @@ contract VARQ is Ownable, IVARQ {
     mapping(uint256 => mapping(address => uint256)) public liquidityBalance;
     mapping(uint256 => uint256) public totalLiquidity;
 
-    // Add new structs
-    struct vCurrencyPool {
-        address uniswapPair;
-        uint256 lockEndTime;
-        uint256 yieldAccrued;
-        bool isTerminated;
-        uint256 terminationRate;  // Final redemption rate for vRQT
-        uint256 totalLockedVUSD;    // Track total vUSD locked
-        mapping(address => LockedLP) userLocks;  // Track individual LP locks
-        uint256 lastYieldUpdate;        // Last time yield was updated
-        uint256 yieldPerTokenStored;    // Accumulated yield per token
-        uint256 totalRQTStaked;         // Total RQT in AMM
-        mapping(address => uint256) userYieldPerTokenPaid;  // User's last yield checkpoint
-        mapping(address => uint256) yields;                 // Accumulated yields
-    }
-
-    // Add new state variables
-    mapping(uint256 => vCurrencyPool) public pools;
-
-    // Minimum reserves threshold (10%)
-    uint256 public constant MIN_RESERVES_THRESHOLD = 1e17; // 0.1 in 1e18
-
-    // Add new structs
-    struct vCurrencyProposal {
-        string name;
-        string symbol;
-        address oracleAddress;
-        uint256 totalStaked;
-        uint256 proposedRatio;  // weighted average of staker inputs
-        uint256 minStakeRequired;  // 10M vUSD
-        bool isActive;
-        mapping(address => StakeInfo) stakers;
-    }
-
-    struct StakeInfo {
-        uint256 amountStaked;
-        uint256 proposedRatio;
-        uint256 timestamp;
-    }
-
     // Add new state variables
     mapping(uint256 => vCurrencyProposal) public proposals;
     uint256 public nextProposalId;
     uint256 public constant MINIMUM_PROPOSAL_STAKE = 10_000 * 1e18; // 10k vUSD
     uint256 public constant MINIMUM_TOTAL_STAKE = 10_000_000 * 1e18; // 10M vUSD
-
-    // New struct for tracking locked LP positions
-    struct LockedLP {
-        uint256 vusdAmount;         // Original vUSD amount
-        uint256 liquidityAmount;    // LP tokens received
-        uint256 unlockTime;         // When LP can be withdrawn
-        bool claimed;               // Whether LP has been claimed
-    }
 
     // Add new state variable to track stakers per proposal
     mapping(uint256 => address[]) private proposalStakers;
@@ -102,6 +60,15 @@ contract VARQ is Ownable, IVARQ {
     uint256 private constant APY = 1000;  // 10.00%
     uint256 private constant YIELD_DENOMINATOR = 10000;     // 100.00%
     uint256 private constant SECONDS_PER_YEAR = 31536000;   // 365 days
+
+    // Add missing state variables
+    mapping(address => mapping(uint256 => uint256)) public balanceOf;
+    mapping(address => mapping(address => mapping(uint256 => uint256))) public allowance;
+    mapping(address => mapping(address => bool)) public isOperator;
+    mapping(uint256 => address) public tokenProxies;
+    
+    // Add the threshold constant
+    uint256 public constant MIN_RESERVES_THRESHOLD = 1e17; // 0.1 or 10%
 
     constructor(address initialOwner, address _usdcToken) Ownable(initialOwner) {
         usdcToken = IERC20(_usdcToken);
@@ -112,7 +79,7 @@ contract VARQ is Ownable, IVARQ {
         string memory _name,
         string memory _symbol,
         address _oracleUpdater
-    ) internal returns (uint256) {
+    ) public returns (uint256) {
         require(_oracleUpdater != address(0), "Oracle updater cannot be zero address");
 
         // Deploy reserve token first (this will be currency0)
@@ -177,6 +144,14 @@ contract VARQ is Ownable, IVARQ {
         emit vCurrencyStateAdded(currencyId, fiatTokenId, reserveTokenId);
 
         return currencyId;
+    }
+
+    function addvCurrencyStateTest(
+        string memory _name,
+        string memory _symbol,
+        address _oracleUpdater
+    ) public returns (uint256) {
+        return addvCurrencyState(_name, _symbol, _oracleUpdater);
     }
 
     function updateOracleRate(uint256 currencyId, uint256 newRate) public {
@@ -371,7 +346,7 @@ contract VARQ is Ownable, IVARQ {
     //////////////////////////////////////////////////////////////*/
 
     function transfer(address to, uint256 id, uint256 amount) external override returns (bool) {
-        vCurrencyPool storage pool = pools[_tokenMetadatas[id].vCurrencyId];
+        ExtendedVCurrencyPool storage pool = pools[_tokenMetadatas[id].vCurrencyId];
         LockedLP storage userLock = pool.userLocks[msg.sender];
         
         // If this is an LP token and user has a lock, prevent transfer
@@ -539,7 +514,7 @@ contract VARQ is Ownable, IVARQ {
         uint256 tokenIdOut = isFiatIn ? nation.tokenIdReserve : nation.tokenIdFiat;
 
         transferFrom(msg.sender, address(this), tokenIdIn, amountIn);
-        transfer(to, tokenIdOut, amountOut);
+        _transfer(msg.sender, to, tokenIdOut, amountOut);
 
         // Update reserves
         if (isFiatIn) {
@@ -616,7 +591,7 @@ contract VARQ is Ownable, IVARQ {
     // Add termination functions
     function checkTerminationConditions(uint256 currencyId) public returns (bool) {
         vCurrencyState storage state = _vCurrencyStates[currencyId];
-        vCurrencyPool storage pool = pools[currencyId];
+        vAMMPool storage pool = vAMMPools[currencyId];
         
         // Check if either vRQT or vFiat reserves are below threshold
         uint256 reserveRatio = _calculateReserveRatio(state.S_f, state.S_r);
@@ -634,7 +609,7 @@ contract VARQ is Ownable, IVARQ {
         uint256 amount,
         bool isFiat
     ) external {
-        vCurrencyPool storage pool = pools[currencyId];
+        ExtendedVCurrencyPool storage pool = pools[currencyId];
         require(pool.isTerminated, "Not terminated");
         
         uint256 vusdAmount;
@@ -672,7 +647,7 @@ contract VARQ is Ownable, IVARQ {
         bool isFiat
     ) internal view returns (uint256) {
         vCurrencyState storage state = _vCurrencyStates[currencyId];
-        vCurrencyPool storage pool = pools[currencyId];
+        ExtendedVCurrencyPool storage pool = pools[currencyId];
         
         if (isFiat) {
             // For vFiat, use protocol rate (S_f/S_r)
@@ -743,7 +718,7 @@ contract VARQ is Ownable, IVARQ {
         
         // Update total staked and weighted average ratio
         proposal.totalStaked += amount;
-        proposal.proposedRatio = _calculateWeightedRatio(proposal);
+        proposal.proposedRatio = _calculateWeightedRatio(proposalId);
         
         emit StakedForProposal(proposalId, msg.sender, amount, proposedRatio);
     }
@@ -784,9 +759,10 @@ contract VARQ is Ownable, IVARQ {
         emit VCurrencyGenesis(currencyId, proposal.totalStaked, fiatAmount);
     }
 
-    function _calculateWeightedRatio(vCurrencyProposal storage proposal) internal view returns (uint256) {
+    function _calculateWeightedRatio(uint256 proposalId) internal view returns (uint256) {
+        vCurrencyProposal storage proposal = proposals[proposalId];
         uint256 weightedSum;
-        address[] memory stakers = _getProposalStakers(proposal);
+        address[] memory stakers = _getProposalStakers(proposalId);
         
         for(uint i = 0; i < stakers.length; i++) {
             StakeInfo storage staker = proposal.stakers[stakers[i]];
@@ -840,7 +816,7 @@ contract VARQ is Ownable, IVARQ {
         uint256 minReserveOut
     ) external returns (uint256 liquidityMinted) {
         vCurrencyState storage state = _vCurrencyStates[currencyId];
-        vCurrencyPool storage pool = pools[currencyId];
+        ExtendedVCurrencyPool storage pool = pools[currencyId];
         
         require(!pool.isTerminated, "Pool terminated");
         require(vusdAmount >= 1e18, "Min 1 vUSD required"); // Minimum deposit
@@ -889,7 +865,7 @@ contract VARQ is Ownable, IVARQ {
         address user
     ) internal returns (uint256 liquidityMinted) {
         vAMMPool storage ammPool = vAMMPools[currencyId];
-        vCurrencyPool storage pool = pools[currencyId];
+        ExtendedVCurrencyPool storage pool = pools[currencyId];
         
         // Update yield before changing stakes
         _updateYield(currencyId);
@@ -899,27 +875,22 @@ contract VARQ is Ownable, IVARQ {
             liquidityMinted = sqrt(fiatAmount * reserveAmount) - MINIMUM_LIQUIDITY;
             liquidityBalance[currencyId][address(0)] = MINIMUM_LIQUIDITY;
         } else {
-            liquidityMinted = min(
-                (fiatAmount * totalLiquidity[currencyId]) / ammPool.reserveFiat,
-                (reserveAmount * totalLiquidity[currencyId]) / ammPool.reserveReserve
-            );
+            // Split the calculation into steps to use fewer stack variables
+            uint256 totalLiq = totalLiquidity[currencyId];
+            uint256 amount1 = (fiatAmount * totalLiq) / ammPool.reserveFiat;
+            uint256 amount2 = (reserveAmount * totalLiq) / ammPool.reserveReserve;
+            liquidityMinted = amount1 < amount2 ? amount1 : amount2;
         }
 
         require(liquidityMinted > 0, "Insufficient liquidity minted");
 
-        // Update pool reserves
+        // Update state variables
         ammPool.reserveFiat += fiatAmount;
         ammPool.reserveReserve += reserveAmount;
         ammPool.kLast = ammPool.reserveFiat * ammPool.reserveReserve;
-
-        // Update liquidity tracking
         liquidityBalance[currencyId][address(this)] += liquidityMinted;
         totalLiquidity[currencyId] += liquidityMinted;
-
-        // Update RQT tracking for yield
         pool.totalRQTStaked += reserveAmount;
-        
-        // Initialize user's yield tracking
         pool.userYieldPerTokenPaid[user] = pool.yieldPerTokenStored;
         
         return liquidityMinted;
@@ -927,7 +898,7 @@ contract VARQ is Ownable, IVARQ {
 
     // Add yield update function
     function _updateYield(uint256 currencyId) internal {
-        vCurrencyPool storage pool = pools[currencyId];
+        vAMMPool storage pool = vAMMPools[currencyId];
         
         if (block.timestamp > pool.lastYieldUpdate) {
             if (pool.totalRQTStaked > 0) {
@@ -943,7 +914,7 @@ contract VARQ is Ownable, IVARQ {
 
     // Add function to calculate earned yield
     function earned(uint256 currencyId, address user) public view returns (uint256) {
-        vCurrencyPool storage pool = pools[currencyId];
+        vAMMPool storage pool = vAMMPools[currencyId];
         LockedLP storage userLock = pool.userLocks[user];
         
         uint256 currentYieldPerToken = pool.yieldPerTokenStored;
@@ -960,7 +931,7 @@ contract VARQ is Ownable, IVARQ {
 
     // Function to withdraw locked LP after lock period
     function withdrawLockedLP(uint256 currencyId) external {
-        vCurrencyPool storage pool = pools[currencyId];
+        ExtendedVCurrencyPool storage pool = pools[currencyId];
         LockedLP storage userLock = pool.userLocks[msg.sender];
         
         require(userLock.liquidityAmount > 0, "No locked LP");

@@ -80,6 +80,7 @@ interface IVARQ {
         uint256 proposedRatio;
         uint256 minStakeRequired;
         bool isActive;
+        mapping(address => StakeInfo) stakers;
     }
 
     struct StakeInfo {
@@ -100,4 +101,26 @@ interface IVARQ {
     function claimTerminatedVCurrency(uint256 currencyId, uint256 amount, bool isFiat) external;
     function earned(uint256 currencyId, address user) external view returns (uint256);
     function withdrawLockedLP(uint256 currencyId) external;
+
+    // Add vAMMPool struct definition
+    struct vAMMPool {
+        uint256 reserveFiat;    // Reserve of fiat token
+        uint256 reserveReserve; // Reserve of reserve token
+        uint256 kLast;          // Last K value (reserve0 * reserve1)
+        bool isTerminated;
+        uint256 terminationRate;
+        uint256 lastYieldUpdate;
+        uint256 totalRQTStaked;
+        uint256 yieldPerTokenStored;
+        mapping(address => uint256) userYieldPerTokenPaid;
+        mapping(address => uint256) yields;
+        mapping(address => LockedLP) userLocks;
+    }
+
+    // Add the function declaration to the interface
+    function addvCurrencyState(
+        string memory _name,
+        string memory _symbol,
+        address _oracleUpdater
+    ) external returns (uint256);
 }

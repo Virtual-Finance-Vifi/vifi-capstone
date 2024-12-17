@@ -50,7 +50,7 @@ contract FluxAdjFeesTest is Test, Deployers {
 
     function test_VARQSetup() public {
         // Test VARQ currency setup
-        varq.addvCurrencyState("KES", "KES_Reserve", address(this));
+        varq.addvCurrencyStateTest("KES", "KES_Reserve", address(this));
         varq.updateOracleRate(1, 128e18);  // 1 USD = 128 KES
         
         IVARQ.vCurrencyState memory state = varq.vCurrencyStates(1);
@@ -60,7 +60,7 @@ contract FluxAdjFeesTest is Test, Deployers {
 
     function test_TokenMinting() public {
         // Test token minting process
-        varq.addvCurrencyState("KES", "KES_Reserve", address(this));
+        varq.addvCurrencyStateTest("KES", "KES_Reserve", address(this));
         varq.updateOracleRate(1, 128e18);
         
         usdc.approve(address(varq), INITIAL_USDC_SUPPLY);
@@ -74,7 +74,7 @@ contract FluxAdjFeesTest is Test, Deployers {
 
     function test_PoolInitialization() public {
         // First setup tokens
-        varq.addvCurrencyState("KES", "KES_Reserve", address(this));
+        varq.addvCurrencyStateTest("KES", "KES_Reserve", address(this));
         varq.updateOracleRate(1, 128e18);
         usdc.approve(address(varq), INITIAL_USDC_SUPPLY);
         varq.depositUSD(1000e18);
