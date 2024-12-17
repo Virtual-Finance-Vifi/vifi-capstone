@@ -50,6 +50,11 @@ contract VARQ is Ownable, IVARQ {
         uint256 terminationRate;  // Final redemption rate for vRQT
         uint256 totalLockedVUSD;    // Track total vUSD locked
         mapping(address => LockedLP) userLocks;  // Track individual LP locks
+        uint256 lastYieldUpdate;        // Last time yield was updated
+        uint256 yieldPerTokenStored;    // Accumulated yield per token
+        uint256 totalRQTStaked;         // Total RQT in AMM
+        mapping(address => uint256) userYieldPerTokenPaid;  // User's last yield checkpoint
+        mapping(address => uint256) yields;                 // Accumulated yields
     }
 
     // Add new state variables
@@ -92,6 +97,11 @@ contract VARQ is Ownable, IVARQ {
 
     // Add new state variable to track stakers per proposal
     mapping(uint256 => address[]) private proposalStakers;
+
+    // Constants for yield calculation
+    uint256 private constant APY = 1000;  // 10.00%
+    uint256 private constant YIELD_DENOMINATOR = 10000;     // 100.00%
+    uint256 private constant SECONDS_PER_YEAR = 31536000;   // 365 days
 
     constructor(address initialOwner, address _usdcToken) Ownable(initialOwner) {
         usdcToken = IERC20(_usdcToken);
@@ -857,31 +867,74 @@ contract VARQ is Ownable, IVARQ {
         uint256 reserveAmount,
         address user
     ) internal returns (uint256 liquidityMinted) {
-        vAMMPool storage pool = vAMMPools[currencyId];
+        vAMMPool storage ammPool = vAMMPools[currencyId];
+        vCurrencyPool storage pool = pools[currencyId];
+        
+        // Update yield before changing stakes
+        _updateYield(currencyId);
         
         // Calculate liquidity tokens
-        if (pool.reserveFiat == 0 && pool.reserveReserve == 0) {
+        if (ammPool.reserveFiat == 0 && ammPool.reserveReserve == 0) {
             liquidityMinted = sqrt(fiatAmount * reserveAmount) - MINIMUM_LIQUIDITY;
             liquidityBalance[currencyId][address(0)] = MINIMUM_LIQUIDITY;
         } else {
             liquidityMinted = min(
-                (fiatAmount * totalLiquidity[currencyId]) / pool.reserveFiat,
-                (reserveAmount * totalLiquidity[currencyId]) / pool.reserveReserve
+                (fiatAmount * totalLiquidity[currencyId]) / ammPool.reserveFiat,
+                (reserveAmount * totalLiquidity[currencyId]) / ammPool.reserveReserve
             );
         }
 
         require(liquidityMinted > 0, "Insufficient liquidity minted");
 
         // Update pool reserves
-        pool.reserveFiat += fiatAmount;
-        pool.reserveReserve += reserveAmount;
-        pool.kLast = pool.reserveFiat * pool.reserveReserve;
+        ammPool.reserveFiat += fiatAmount;
+        ammPool.reserveReserve += reserveAmount;
+        ammPool.kLast = ammPool.reserveFiat * ammPool.reserveReserve;
 
         // Update liquidity tracking
         liquidityBalance[currencyId][address(this)] += liquidityMinted;
         totalLiquidity[currencyId] += liquidityMinted;
 
+        // Update RQT tracking for yield
+        pool.totalRQTStaked += reserveAmount;
+        
+        // Initialize user's yield tracking
+        pool.userYieldPerTokenPaid[user] = pool.yieldPerTokenStored;
+        
         return liquidityMinted;
+    }
+
+    // Add yield update function
+    function _updateYield(uint256 currencyId) internal {
+        vCurrencyPool storage pool = pools[currencyId];
+        
+        if (block.timestamp > pool.lastYieldUpdate) {
+            if (pool.totalRQTStaked > 0) {
+                uint256 timeElapsed = block.timestamp - pool.lastYieldUpdate;
+                
+                // Calculate yield: (APY * timeElapsed * totalRQTStaked) / (SECONDS_PER_YEAR * YIELD_DENOMINATOR)
+                uint256 yieldIncrement = (APY * timeElapsed * 1e18) / (SECONDS_PER_YEAR * YIELD_DENOMINATOR);
+                pool.yieldPerTokenStored += yieldIncrement;
+            }
+            pool.lastYieldUpdate = block.timestamp;
+        }
+    }
+
+    // Add function to calculate earned yield
+    function earned(uint256 currencyId, address user) public view returns (uint256) {
+        vCurrencyPool storage pool = pools[currencyId];
+        LockedLP storage userLock = pool.userLocks[user];
+        
+        uint256 currentYieldPerToken = pool.yieldPerTokenStored;
+        if (block.timestamp > pool.lastYieldUpdate && pool.totalRQTStaked > 0) {
+            uint256 timeElapsed = block.timestamp - pool.lastYieldUpdate;
+            uint256 yieldIncrement = (APY * timeElapsed * 1e18) / (SECONDS_PER_YEAR * YIELD_DENOMINATOR);
+            currentYieldPerToken += yieldIncrement;
+        }
+        
+        return (userLock.liquidityAmount * 
+               (currentYieldPerToken - pool.userYieldPerTokenPaid[user]) / 1e18) 
+               + pool.yields[user];
     }
 
     // Function to withdraw locked LP after lock period
@@ -893,6 +946,12 @@ contract VARQ is Ownable, IVARQ {
         require(!userLock.claimed, "LP already claimed");
         require(block.timestamp >= userLock.unlockTime, "Still locked");
 
+        // Update yield before withdrawal
+        _updateYield(currencyId);
+        
+        // Calculate earned yield
+        uint256 yieldEarned = earned(currencyId, msg.sender);
+        
         uint256 liquidityAmount = userLock.liquidityAmount;
         userLock.claimed = true;
 
@@ -908,23 +967,22 @@ contract VARQ is Ownable, IVARQ {
         liquidityBalance[currencyId][address(this)] -= liquidityAmount;
 
         // Convert back to vUSD and transfer to user
-        uint256 vusdReturn = userLock.vusdAmount + _calculateYield(currencyId, userLock);
+        uint256 vusdReturn = userLock.vusdAmount + yieldEarned;
         _mint(msg.sender, 1, vusdReturn);
 
         pool.totalLockedVUSD -= userLock.vusdAmount;
 
-        emit LPUnlocked(currencyId, msg.sender, vusdReturn, liquidityAmount);
-    }
+        // Mint yield as vUSD
+        if (yieldEarned > 0) {
+            _mint(msg.sender, 1, yieldEarned);
+            pool.yields[msg.sender] = 0;
+        }
 
-    // Calculate yield for locked LP
-    function _calculateYield(uint256 currencyId, LockedLP storage userLock) internal view returns (uint256) {
-        vCurrencyPool storage pool = pools[currencyId];
+        // Update user's yield checkpoint
+        pool.userYieldPerTokenPaid[msg.sender] = pool.yieldPerTokenStored;
         
-        // Simple yield calculation (can be made more sophisticated)
-        uint256 lockDuration = block.timestamp - (userLock.unlockTime - 30 days);
-        uint256 yield = (userLock.vusdAmount * pool.yieldAccrued * lockDuration) / (30 days * 1e18);
-        
-        return yield;
+        emit LPUnlocked(currencyId, msg.sender, vusdReturn, liquidityAmount);
+        emit YieldClaimed(currencyId, msg.sender, yieldEarned);
     }
 
     // Add events
@@ -945,5 +1003,27 @@ contract VARQ is Ownable, IVARQ {
     // Implement the missing helper function
     function _getProposalStakers(uint256 proposalId) internal view returns (address[] memory) {
         return proposalStakers[proposalId];
+    }
+
+    // Add new event
+    event YieldClaimed(
+        uint256 indexed currencyId,
+        address indexed user,
+        uint256 yieldAmount
+    );
+
+    // Add function to prevent LP token transfers during lock
+    function transfer(address to, uint256 id, uint256 amount) external override returns (bool) {
+        vCurrencyPool storage pool = pools[_tokenMetadatas[id].vCurrencyId];
+        LockedLP storage userLock = pool.userLocks[msg.sender];
+        
+        // If this is an LP token and user has a lock, prevent transfer
+        if (userLock.liquidityAmount > 0 && 
+            block.timestamp < userLock.unlockTime && 
+            !userLock.claimed) {
+            revert("LP tokens locked");
+        }
+        
+        return super.transfer(to, id, amount);
     }
 }
