@@ -41,6 +41,58 @@ contract VARQ is Ownable, IVARQ {
     mapping(uint256 => mapping(address => uint256)) public liquidityBalance;
     mapping(uint256 => uint256) public totalLiquidity;
 
+    // Add new structs
+    struct vCurrencyPool {
+        address uniswapPair;
+        uint256 lockEndTime;
+        uint256 yieldAccrued;
+        bool isTerminated;
+        uint256 terminationRate;  // Final redemption rate for vRQT
+        uint256 totalLockedVUSD;    // Track total vUSD locked
+        mapping(address => LockedLP) userLocks;  // Track individual LP locks
+    }
+
+    // Add new state variables
+    mapping(uint256 => vCurrencyPool) public pools;
+
+    // Minimum reserves threshold (10%)
+    uint256 public constant MIN_RESERVES_THRESHOLD = 1e17; // 0.1 in 1e18
+
+    // Add new structs
+    struct vCurrencyProposal {
+        string name;
+        string symbol;
+        address oracleAddress;
+        uint256 totalStaked;
+        uint256 proposedRatio;  // weighted average of staker inputs
+        uint256 minStakeRequired;  // 10M vUSD
+        bool isActive;
+        mapping(address => StakeInfo) stakers;
+    }
+
+    struct StakeInfo {
+        uint256 amountStaked;
+        uint256 proposedRatio;
+        uint256 timestamp;
+    }
+
+    // Add new state variables
+    mapping(uint256 => vCurrencyProposal) public proposals;
+    uint256 public nextProposalId;
+    uint256 public constant MINIMUM_PROPOSAL_STAKE = 10_000 * 1e18; // 10k vUSD
+    uint256 public constant MINIMUM_TOTAL_STAKE = 10_000_000 * 1e18; // 10M vUSD
+
+    // New struct for tracking locked LP positions
+    struct LockedLP {
+        uint256 vusdAmount;         // Original vUSD amount
+        uint256 liquidityAmount;    // LP tokens received
+        uint256 unlockTime;         // When LP can be withdrawn
+        bool claimed;               // Whether LP has been claimed
+    }
+
+    // Add new state variable to track stakers per proposal
+    mapping(uint256 => address[]) private proposalStakers;
+
     constructor(address initialOwner, address _usdcToken) Ownable(initialOwner) {
         usdcToken = IERC20(_usdcToken);
         _createTokenProxy(1, "vUSD", "vUSD", 18, 0);
@@ -529,5 +581,369 @@ contract VARQ is Ownable, IVARQ {
     // Add view function to check total liquidity
     function getTotalLiquidity(uint256 currencyId) external view returns (uint256) {
         return totalLiquidity[currencyId];
+    }
+
+    // Add termination functions
+    function checkTerminationConditions(uint256 currencyId) public returns (bool) {
+        vCurrencyState storage state = _vCurrencyStates[currencyId];
+        vCurrencyPool storage pool = pools[currencyId];
+        
+        // Check if either vRQT or vFiat reserves are below threshold
+        uint256 reserveRatio = _calculateReserveRatio(state.S_f, state.S_r);
+        if (reserveRatio < MIN_RESERVES_THRESHOLD) {
+            pool.isTerminated = true;
+            pool.terminationRate = _calculateTerminationRate(currencyId);
+            emit VCurrencyTerminated(currencyId, pool.terminationRate);
+            return true;
+        }
+        return false;
+    }
+
+    function claimTerminatedVCurrency(
+        uint256 currencyId,
+        uint256 amount,
+        bool isFiat
+    ) external {
+        vCurrencyPool storage pool = pools[currencyId];
+        require(pool.isTerminated, "Not terminated");
+        
+        if (isFiat) {
+            // Claim vFiat at protocol rate
+            uint256 vusdAmount = _calculateVUSDClaim(currencyId, amount, true);
+            _burn(msg.sender, _vCurrencyStates[currencyId].tokenIdFiat, amount);
+            _mint(msg.sender, 1, vusdAmount);
+        } else {
+            // Claim vRQT at termination rate
+            uint256 vusdAmount = _calculateVUSDClaim(currencyId, amount, false);
+            _burn(msg.sender, _vCurrencyStates[currencyId].tokenIdReserve, amount);
+            _mint(msg.sender, 1, vusdAmount);
+        }
+        
+        emit VCurrencyClaimed(currencyId, msg.sender, amount, vusdAmount, isFiat);
+    }
+
+    // Helper function to calculate termination rate
+    function _calculateTerminationRate(uint256 currencyId) internal view returns (uint256) {
+        vCurrencyState storage state = _vCurrencyStates[currencyId];
+        vAMMPool storage pool = vAMMPools[currencyId];
+        
+        // Use the last pool ratio as the termination rate
+        if (pool.reserveReserve > 0) {
+            return (pool.reserveFiat * 1e18) / pool.reserveReserve;
+        }
+        return 0;
+    }
+
+    // Helper function to calculate vUSD claim amount
+    function _calculateVUSDClaim(
+        uint256 currencyId,
+        uint256 amount,
+        bool isFiat
+    ) internal view returns (uint256) {
+        vCurrencyState storage state = _vCurrencyStates[currencyId];
+        vCurrencyPool storage pool = pools[currencyId];
+        
+        if (isFiat) {
+            // For vFiat, use protocol rate (S_f/S_r)
+            return (amount * state.S_r) / state.S_f;
+        } else {
+            // For vRQT, use termination rate
+            return (amount * pool.terminationRate) / 1e18;
+        }
+    }
+
+    // Add events
+    event VCurrencyTerminated(uint256 indexed currencyId, uint256 terminationRate);
+    event VCurrencyClaimed(
+        uint256 indexed currencyId,
+        address indexed user,
+        uint256 amount,
+        uint256 vusdAmount,
+        bool isFiat
+    );
+
+    // Genesis functions
+    function proposeVCurrency(
+        string memory _name,
+        string memory _symbol,
+        address _oracleAddress,
+        uint256 _proposedRatio,
+        uint256 _initialStake
+    ) external returns (uint256 proposalId) {
+        require(_initialStake >= MINIMUM_PROPOSAL_STAKE, "Insufficient initial stake");
+        require(_oracleAddress != address(0), "Invalid oracle address");
+        
+        proposalId = nextProposalId++;
+        vCurrencyProposal storage proposal = proposals[proposalId];
+        proposal.name = _name;
+        proposal.symbol = _symbol;
+        proposal.oracleAddress = _oracleAddress;
+        proposal.minStakeRequired = MINIMUM_TOTAL_STAKE;
+        proposal.isActive = true;
+        
+        // Initial stake from proposer
+        _stakeForProposal(proposalId, _initialStake, _proposedRatio);
+        
+        emit VCurrencyProposed(proposalId, _name, _symbol, _oracleAddress);
+        return proposalId;
+    }
+
+    function _stakeForProposal(
+        uint256 proposalId,
+        uint256 amount,
+        uint256 proposedRatio
+    ) internal {
+        vCurrencyProposal storage proposal = proposals[proposalId];
+        
+        // If this is the first time this address is staking in this proposal
+        if (proposal.stakers[msg.sender].amountStaked == 0) {
+            proposalStakers[proposalId].push(msg.sender);
+        }
+        
+        // Transfer vUSD from staker
+        require(balanceOf[msg.sender][1] >= amount, "Insufficient vUSD balance");
+        _burn(msg.sender, 1, amount);
+        
+        // Update staker info
+        StakeInfo storage staker = proposal.stakers[msg.sender];
+        staker.amountStaked += amount;
+        staker.proposedRatio = proposedRatio;
+        staker.timestamp = block.timestamp;
+        
+        // Update total staked and weighted average ratio
+        proposal.totalStaked += amount;
+        proposal.proposedRatio = _calculateWeightedRatio(proposal);
+        
+        emit StakedForProposal(proposalId, msg.sender, amount, proposedRatio);
+    }
+
+    function stakeForProposal(
+        uint256 proposalId,
+        uint256 amount,
+        uint256 proposedRatio
+    ) external {
+        require(proposals[proposalId].isActive, "Proposal not active");
+        _stakeForProposal(proposalId, amount, proposedRatio);
+    }
+
+    function initiateGenesis(uint256 proposalId) external onlyOwner {
+        vCurrencyProposal storage proposal = proposals[proposalId];
+        require(proposal.isActive, "Proposal not active");
+        require(proposal.totalStaked >= proposal.minStakeRequired, "Insufficient stake");
+        
+        // Create vCurrency pair
+        uint256 currencyId = addvCurrencyState(
+            proposal.name,
+            string.concat("vRQT_", proposal.name),
+            proposal.oracleAddress
+        );
+        
+        // Convert staked vUSD to vCurrency pair at weighted average ratio
+        uint256 fiatAmount = (proposal.totalStaked * proposal.proposedRatio) / 1e18;
+        
+        // Initialize AMM pool with converted tokens
+        _initializeAMMPool(currencyId, proposal.totalStaked, fiatAmount);
+        
+        // Set lock period
+        pools[currencyId].lockEndTime = block.timestamp + 30 days;
+        
+        // Deactivate proposal
+        proposal.isActive = false;
+        
+        emit VCurrencyGenesis(currencyId, proposal.totalStaked, fiatAmount);
+    }
+
+    function _calculateWeightedRatio(vCurrencyProposal storage proposal) internal view returns (uint256) {
+        uint256 weightedSum;
+        address[] memory stakers = _getProposalStakers(proposal);
+        
+        for(uint i = 0; i < stakers.length; i++) {
+            StakeInfo storage staker = proposal.stakers[stakers[i]];
+            weightedSum += (staker.amountStaked * staker.proposedRatio);
+        }
+        
+        return proposal.totalStaked > 0 ? weightedSum / proposal.totalStaked : 0;
+    }
+
+    function _initializeAMMPool(
+        uint256 currencyId,
+        uint256 reserveAmount,
+        uint256 fiatAmount
+    ) internal {
+        vAMMPool storage pool = vAMMPools[currencyId];
+        pool.reserveReserve = reserveAmount;
+        pool.reserveFiat = fiatAmount;
+        pool.kLast = reserveAmount * fiatAmount;
+        
+        // Mint initial LP tokens
+        uint256 initialLiquidity = sqrt(reserveAmount * fiatAmount);
+        liquidityBalance[currencyId][msg.sender] = initialLiquidity - MINIMUM_LIQUIDITY;
+        liquidityBalance[currencyId][address(0)] = MINIMUM_LIQUIDITY; // Lock minimum liquidity
+        totalLiquidity[currencyId] = initialLiquidity;
+    }
+
+    // Add events
+    event VCurrencyProposed(
+        uint256 indexed proposalId,
+        string name,
+        string symbol,
+        address oracleAddress
+    );
+    event StakedForProposal(
+        uint256 indexed proposalId,
+        address indexed staker,
+        uint256 amount,
+        uint256 proposedRatio
+    );
+    event VCurrencyGenesis(
+        uint256 indexed currencyId,
+        uint256 totalStaked,
+        uint256 initialFiatAmount
+    );
+
+    // Function to deposit vUSD and receive locked LP tokens
+    function depositAndLockLP(
+        uint256 currencyId,
+        uint256 vusdAmount,
+        uint256 minFiatOut,
+        uint256 minReserveOut
+    ) external returns (uint256 liquidityMinted) {
+        vCurrencyState storage state = _vCurrencyStates[currencyId];
+        vCurrencyPool storage pool = pools[currencyId];
+        
+        require(!pool.isTerminated, "Pool terminated");
+        require(vusdAmount >= 1e18, "Min 1 vUSD required"); // Minimum deposit
+        require(balanceOf[msg.sender][1] >= vusdAmount, "Insufficient vUSD");
+
+        // Calculate amounts based on current pool ratio
+        vAMMPool storage ammPool = vAMMPools[currencyId];
+        uint256 fiatAmount = (vusdAmount * ammPool.reserveFiat) / ammPool.reserveReserve;
+        
+        // Verify minimum outputs
+        require(fiatAmount >= minFiatOut, "Insufficient fiat output");
+        require(vusdAmount >= minReserveOut, "Insufficient reserve output");
+
+        // Burn vUSD from sender
+        _burn(msg.sender, 1, vusdAmount);
+
+        // Convert vUSD to vCurrency pair
+        _mint(address(this), state.tokenIdFiat, fiatAmount);
+        _mint(address(this), state.tokenIdReserve, vusdAmount);
+
+        // Add liquidity to AMM
+        liquidityMinted = _addLiquidityAndLock(
+            currencyId,
+            fiatAmount,
+            vusdAmount,
+            msg.sender
+        );
+
+        // Update user's locked position
+        LockedLP storage userLock = pool.userLocks[msg.sender];
+        userLock.vusdAmount += vusdAmount;
+        userLock.liquidityAmount += liquidityMinted;
+        userLock.unlockTime = block.timestamp + 30 days;
+        
+        pool.totalLockedVUSD += vusdAmount;
+
+        emit LPLocked(currencyId, msg.sender, vusdAmount, liquidityMinted);
+        return liquidityMinted;
+    }
+
+    // Internal function to add liquidity and lock
+    function _addLiquidityAndLock(
+        uint256 currencyId,
+        uint256 fiatAmount,
+        uint256 reserveAmount,
+        address user
+    ) internal returns (uint256 liquidityMinted) {
+        vAMMPool storage pool = vAMMPools[currencyId];
+        
+        // Calculate liquidity tokens
+        if (pool.reserveFiat == 0 && pool.reserveReserve == 0) {
+            liquidityMinted = sqrt(fiatAmount * reserveAmount) - MINIMUM_LIQUIDITY;
+            liquidityBalance[currencyId][address(0)] = MINIMUM_LIQUIDITY;
+        } else {
+            liquidityMinted = min(
+                (fiatAmount * totalLiquidity[currencyId]) / pool.reserveFiat,
+                (reserveAmount * totalLiquidity[currencyId]) / pool.reserveReserve
+            );
+        }
+
+        require(liquidityMinted > 0, "Insufficient liquidity minted");
+
+        // Update pool reserves
+        pool.reserveFiat += fiatAmount;
+        pool.reserveReserve += reserveAmount;
+        pool.kLast = pool.reserveFiat * pool.reserveReserve;
+
+        // Update liquidity tracking
+        liquidityBalance[currencyId][address(this)] += liquidityMinted;
+        totalLiquidity[currencyId] += liquidityMinted;
+
+        return liquidityMinted;
+    }
+
+    // Function to withdraw locked LP after lock period
+    function withdrawLockedLP(uint256 currencyId) external {
+        vCurrencyPool storage pool = pools[currencyId];
+        LockedLP storage userLock = pool.userLocks[msg.sender];
+        
+        require(userLock.liquidityAmount > 0, "No locked LP");
+        require(!userLock.claimed, "LP already claimed");
+        require(block.timestamp >= userLock.unlockTime, "Still locked");
+
+        uint256 liquidityAmount = userLock.liquidityAmount;
+        userLock.claimed = true;
+
+        // Calculate amounts to return
+        vAMMPool storage ammPool = vAMMPools[currencyId];
+        uint256 fiatAmount = (liquidityAmount * ammPool.reserveFiat) / totalLiquidity[currencyId];
+        uint256 reserveAmount = (liquidityAmount * ammPool.reserveReserve) / totalLiquidity[currencyId];
+
+        // Update pool state
+        ammPool.reserveFiat -= fiatAmount;
+        ammPool.reserveReserve -= reserveAmount;
+        totalLiquidity[currencyId] -= liquidityAmount;
+        liquidityBalance[currencyId][address(this)] -= liquidityAmount;
+
+        // Convert back to vUSD and transfer to user
+        uint256 vusdReturn = userLock.vusdAmount + _calculateYield(currencyId, userLock);
+        _mint(msg.sender, 1, vusdReturn);
+
+        pool.totalLockedVUSD -= userLock.vusdAmount;
+
+        emit LPUnlocked(currencyId, msg.sender, vusdReturn, liquidityAmount);
+    }
+
+    // Calculate yield for locked LP
+    function _calculateYield(uint256 currencyId, LockedLP storage userLock) internal view returns (uint256) {
+        vCurrencyPool storage pool = pools[currencyId];
+        
+        // Simple yield calculation (can be made more sophisticated)
+        uint256 lockDuration = block.timestamp - (userLock.unlockTime - 30 days);
+        uint256 yield = (userLock.vusdAmount * pool.yieldAccrued * lockDuration) / (30 days * 1e18);
+        
+        return yield;
+    }
+
+    // Add events
+    event LPLocked(
+        uint256 indexed currencyId,
+        address indexed user,
+        uint256 vusdAmount,
+        uint256 liquidityMinted
+    );
+
+    event LPUnlocked(
+        uint256 indexed currencyId,
+        address indexed user,
+        uint256 vusdReturned,
+        uint256 liquidityBurned
+    );
+
+    // Implement the missing helper function
+    function _getProposalStakers(uint256 proposalId) internal view returns (address[] memory) {
+        return proposalStakers[proposalId];
     }
 }
