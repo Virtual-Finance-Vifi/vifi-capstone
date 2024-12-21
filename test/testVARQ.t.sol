@@ -8,7 +8,11 @@ import "../src/vTokens.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract testVARQ is Test {
-    event vCurrencyStateAdded(uint256 nationId, uint256 tokenIdFiat, uint256 tokenIdReserve);
+    event vCurrencyStateAdded(
+        uint256 nationId,
+        uint256 tokenIdFiat,
+        uint256 tokenIdReserve
+    );
     event OracleRateUpdated(uint256 nationId, uint256 rate);
     event Transfer(
         address indexed operator,
@@ -33,11 +37,11 @@ contract testVARQ is Test {
     // Test initial USDC balance
     function testInitialBalance() public {
         uint256 initialBalance = usdc.balanceOf(address(this));
-        assertEq(initialBalance, 1e27);  // 1 billion USDC, considering decimals
+        assertEq(initialBalance, 1e27); // 1 billion USDC, considering decimals
     }
 
     function testDepositUSD() public {
-        uint256 depositAmount = 1e6 * 1e18;  // 1 million USDC
+        uint256 depositAmount = 1e6 * 1e18; // 1 million USDC
         usdc.approve(address(varq), depositAmount);
         varq.depositUSD(depositAmount);
         assertEq(varq.balanceOf(address(this), 1), depositAmount);
@@ -45,7 +49,7 @@ contract testVARQ is Test {
 
     // Test deposit of USDC through proxy
     function testDepositUSDProxy() public {
-        uint256 depositAmount = 1e6 * 1e18;  // 1 million USDC
+        uint256 depositAmount = 1e6 * 1e18; // 1 million USDC
         usdc.approve(address(varq), depositAmount);
         varq.depositUSD(depositAmount);
         assertEq(vusd.balanceOf(address(this)), depositAmount);
@@ -54,43 +58,52 @@ contract testVARQ is Test {
     // Test withdrawal directly through VARQ
     function testWithdrawUSD() public {
         // First deposit some USDC
-        uint256 depositAmount = 1e6 * 1e18;  // 1 million USDC
+        uint256 depositAmount = 1e6 * 1e18; // 1 million USDC
         usdc.approve(address(varq), depositAmount);
         varq.depositUSD(depositAmount);
-        
+
         // Now withdraw half of it
-        uint256 withdrawAmount = 5e5 * 1e18;  // 500k USDC
+        uint256 withdrawAmount = 5e5 * 1e18; // 500k USDC
         uint256 initialUSDCBalance = usdc.balanceOf(address(this));
-        
+
         varq.withdrawUSD(withdrawAmount);
-        
+
         // Check VARQ balance decreased
-        assertEq(varq.balanceOf(address(this), 1), depositAmount - withdrawAmount);
+        assertEq(
+            varq.balanceOf(address(this), 1),
+            depositAmount - withdrawAmount
+        );
         // Check USDC was received
-        assertEq(usdc.balanceOf(address(this)), initialUSDCBalance + withdrawAmount);
+        assertEq(
+            usdc.balanceOf(address(this)),
+            initialUSDCBalance + withdrawAmount
+        );
     }
 
     // Test withdrawal through proxy
     function testWithdrawUSDProxy() public {
         // First deposit some USDC
-        uint256 depositAmount = 1e6 * 1e18;  // 1 million USDC
+        uint256 depositAmount = 1e6 * 1e18; // 1 million USDC
         usdc.approve(address(varq), depositAmount);
         varq.depositUSD(depositAmount);
-        
+
         // Now withdraw half of it
-        uint256 withdrawAmount = 5e5 * 1e18;  // 500k USDC
+        uint256 withdrawAmount = 5e5 * 1e18; // 500k USDC
         uint256 initialUSDCBalance = usdc.balanceOf(address(this));
-        
+
         varq.withdrawUSD(withdrawAmount);
-        
+
         // Check vUSD proxy balance decreased
         assertEq(vusd.balanceOf(address(this)), depositAmount - withdrawAmount);
         // Check USDC was received
-        assertEq(usdc.balanceOf(address(this)), initialUSDCBalance + withdrawAmount);
+        assertEq(
+            usdc.balanceOf(address(this)),
+            initialUSDCBalance + withdrawAmount
+        );
     }
 
     // === Currency State Management Tests ===
-    
+
     // Test adding currency state with invalid nation ID
     // function testCannotAddDuplicateNationState() public {
     //     varq.addvCurrencyState("KES", "rqtKES", address(this));
@@ -103,14 +116,14 @@ contract testVARQ is Test {
         // Attempt to add a currency state with a zero address for the oracle updater
         string memory symbol = "KES";
         string memory name = "rqtKES";
-        
+
         // Expect the transaction to revert with a specific error message
         vm.expectRevert("Oracle updater cannot be zero address");
         varq.addvCurrencyState(symbol, name, address(0));
     }
 
     // === Oracle Management Tests ===
-    
+
     // Test unauthorized oracle rate update
     function testCannotUpdateOracleRateUnauthorized() public {
         // First set up a currency state
@@ -120,14 +133,14 @@ contract testVARQ is Test {
 
         // Create a different address to act as unauthorized user
         address unauthorized = address(0x1);
-        
+
         // Switch to unauthorized user context
         vm.startPrank(unauthorized);
-        
+
         // Attempt to update oracle rate with unauthorized address
         vm.expectRevert("Not authorized to update oracle");
         varq.updateOracleRate(nationId, 1e18); // Trying to set rate to 1:1
-        
+
         vm.stopPrank();
 
         // Verify the oracle rate remains unchanged (should still be 0)
@@ -154,16 +167,20 @@ contract testVARQ is Test {
     // Test oracle updater change by non-owner
     function testCannotUpdateOracleUpdaterUnauthorized() public {
         // Set up currency state
-        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
-        
+        uint256 nationId = varq.addvCurrencyState(
+            "KES",
+            "rqtKES",
+            address(this)
+        );
+
         // Create unauthorized address
         address unauthorized = address(0x1);
         vm.startPrank(unauthorized);
-        
+
         // Attempt unauthorized update
-        vm.expectRevert();  // Just check for any revert
+        vm.expectRevert(); // Just check for any revert
         varq.updateOracleUpdater(nationId, address(0x2));
-        
+
         vm.stopPrank();
     }
 
@@ -172,7 +189,11 @@ contract testVARQ is Test {
     // Test minting with insufficient vUSD balance
     function testCannotMintWithInsufficientVUSD() public {
         // Set up currency state
-        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
+        uint256 nationId = varq.addvCurrencyState(
+            "KES",
+            "rqtKES",
+            address(this)
+        );
         varq.updateOracleRate(nationId, 1e18);
 
         // Attempt to mint without enough vUSD
@@ -183,8 +204,12 @@ contract testVARQ is Test {
     // Test minting with zero oracle rate
     function testCannotMintWithZeroOracleRate() public {
         // Set up currency state without setting oracle rate
-        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
-        
+        uint256 nationId = varq.addvCurrencyState(
+            "KES",
+            "rqtKES",
+            address(this)
+        );
+
         // Deposit some vUSD first
         uint256 depositAmount = 1e6 * 1e18;
         usdc.approve(address(varq), depositAmount);
@@ -206,21 +231,28 @@ contract testVARQ is Test {
     function testSuccessfulMint() public {
         // Initialize state
         _initializeReserveState(1);
-        
+
         // Now perform the actual test
         uint256 mintAmount = 1e5 * 1e18;
         varq.mintvCurrency(1, mintAmount);
 
         // Check balances
         IVARQ.vCurrencyState memory state = varq.vCurrencyStates(1);
-        assertEq(varq.balanceOf(address(this), state.tokenIdFiat), mintAmount * 2); // Account for initial mint
+        assertEq(
+            varq.balanceOf(address(this), state.tokenIdFiat),
+            mintAmount * 2
+        ); // Account for initial mint
         assertTrue(varq.balanceOf(address(this), state.tokenIdReserve) > 0);
     }
 
     // Test minting effects on state variables (S_u, S_f, S_r)
     function testMintStateVariables() public {
         // Set up currency state
-        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
+        uint256 nationId = varq.addvCurrencyState(
+            "KES",
+            "rqtKES",
+            address(this)
+        );
         varq.updateOracleRate(nationId, 1e18);
 
         // Deposit vUSD
@@ -249,7 +281,11 @@ contract testVARQ is Test {
         assertTrue(newSu > initialSu, "S_u should increase");
         assertTrue(newSf > initialSf, "S_f should increase");
         assertTrue(newSr > initialSr, "S_r should increase");
-        assertEq(newOracleRate, initialOracleRate, "Oracle rate should remain unchanged");
+        assertEq(
+            newOracleRate,
+            initialOracleRate,
+            "Oracle rate should remain unchanged"
+        );
     }
 
     // === Burning Tests ===
@@ -257,7 +293,11 @@ contract testVARQ is Test {
     // Test burning with insufficient nation currency
     function testCannotBurnInsufficientNationCurrency() public {
         // Set up currency state and mint some currency
-        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
+        uint256 nationId = varq.addvCurrencyState(
+            "KES",
+            "rqtKES",
+            address(this)
+        );
         varq.updateOracleRate(nationId, 1e18);
 
         // Attempt to burn without any balance
@@ -269,44 +309,52 @@ contract testVARQ is Test {
     // Test burning with insufficient reserve quota
     function testCannotBurnInsufficientReserveQuota() public {
         // 1. Setup: Create nation state and set oracle rate
-        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
-        varq.updateOracleRate(nationId, 1e18);  // 1:1 rate
+        uint256 nationId = varq.addvCurrencyState(
+            "KES",
+            "rqtKES",
+            address(this)
+        );
+        varq.updateOracleRate(nationId, 1e18); // 1:1 rate
 
         // 2. Deposit vUSD for minting
-        uint256 depositAmount = 1e6 * 1e18;  // 1 million vUSD
+        uint256 depositAmount = 1e6 * 1e18; // 1 million vUSD
         usdc.approve(address(varq), depositAmount);
         varq.depositUSD(depositAmount);
-        
+
         // 3. Mint initial tokens
-        uint256 mintAmount = 1e5 * 1e18;  // 100k tokens
+        uint256 mintAmount = 1e5 * 1e18; // 100k tokens
         varq.mintvCurrency(nationId, mintAmount);
-        
+
         // 4. Get token IDs - using tuple destructuring instead of struct
         IVARQ.vCurrencyState memory state = varq.vCurrencyStates(nationId);
         uint256 tokenIdFiat = state.tokenIdFiat;
         uint256 tokenIdReserve = state.tokenIdReserve;
-        
+
         // 5. Transfer half of reserve quota tokens to another address
         address otherAddress = address(0x123);
         uint256 reserveBalance = varq.balanceOf(address(this), tokenIdReserve);
         varq.transfer(otherAddress, tokenIdReserve, reserveBalance / 2);
-        
+
         // 6. Try to burn the full amount of nation currency
         vm.expectRevert("Insufficient reserve quota token balance");
-        varq.burnvCurrency(nationId, mintAmount);  // This should fail as we only have half the needed reserve tokens
+        varq.burnvCurrency(nationId, mintAmount); // This should fail as we only have half the needed reserve tokens
     }
 
     // Test successful burning
     function testSuccessfulBurn() public {
         // Set up currency state
-        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
+        uint256 nationId = varq.addvCurrencyState(
+            "KES",
+            "rqtKES",
+            address(this)
+        );
         varq.updateOracleRate(nationId, 1e18);
 
         // Deposit and mint
         uint256 depositAmount = 1e6 * 1e18;
         usdc.approve(address(varq), depositAmount);
         varq.depositUSD(depositAmount);
-        
+
         uint256 mintAmount = 1e5 * 1e18;
         varq.mintvCurrency(nationId, mintAmount);
 
@@ -315,15 +363,24 @@ contract testVARQ is Test {
         uint256 tokenIdFiat = state.tokenIdFiat;
         uint256 tokenIdReserve = state.tokenIdReserve;
         uint256 initialFiatBalance = varq.balanceOf(address(this), tokenIdFiat);
-        uint256 initialReserveBalance = varq.balanceOf(address(this), tokenIdReserve);
+        uint256 initialReserveBalance = varq.balanceOf(
+            address(this),
+            tokenIdReserve
+        );
 
         // Burn half
         uint256 burnAmount = mintAmount / 2;
         varq.burnvCurrency(nationId, burnAmount);
 
         // Verify balances
-        assertEq(varq.balanceOf(address(this), tokenIdFiat), initialFiatBalance - burnAmount);
-        assertTrue(varq.balanceOf(address(this), tokenIdReserve) < initialReserveBalance);
+        assertEq(
+            varq.balanceOf(address(this), tokenIdFiat),
+            initialFiatBalance - burnAmount
+        );
+        assertTrue(
+            varq.balanceOf(address(this), tokenIdReserve) <
+                initialReserveBalance
+        );
     }
 
     // Test burning effects on state variables
@@ -360,8 +417,12 @@ contract testVARQ is Test {
 
     // Test flux ratio calculation with zero oracle rate
     function testCannotCalculateFluxRatioZeroOracle() public {
-        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
-        
+        uint256 nationId = varq.addvCurrencyState(
+            "KES",
+            "rqtKES",
+            address(this)
+        );
+
         // Attempt to mint with zero oracle rate
         uint256 depositAmount = 1e6 * 1e18;
         usdc.approve(address(varq), depositAmount);
@@ -406,8 +467,15 @@ contract testVARQ is Test {
         varq.withdrawUSD(depositAmount);
 
         // Verify final state (accounting for initialization)
-        assertEq(usdc.balanceOf(address(this)), 1e27 - depositAmount, "Should have expected USDC balance");
-        assertTrue(varq.balanceOf(address(this), 1) > 0, "Should have remaining vUSD balance from initialization");
+        assertEq(
+            usdc.balanceOf(address(this)),
+            1e27 - depositAmount,
+            "Should have expected USDC balance"
+        );
+        assertTrue(
+            varq.balanceOf(address(this), 1) > 0,
+            "Should have remaining vUSD balance from initialization"
+        );
     }
 
     // Test multiple nations interaction
@@ -415,7 +483,7 @@ contract testVARQ is Test {
         // Initialize both nations
         _initializeReserveState(1);
         _initializeReserveState(2);
-        
+
         // Update second nation's rate
         varq.updateOracleRate(2, 2e18); // Different rate for second currency
 
@@ -427,7 +495,7 @@ contract testVARQ is Test {
         // Verify independent state management
         IVARQ.vCurrencyState memory state1 = varq.vCurrencyStates(1);
         IVARQ.vCurrencyState memory state2 = varq.vCurrencyStates(2);
-        
+
         assertTrue(varq.balanceOf(address(this), state1.tokenIdFiat) > 0);
         assertTrue(varq.balanceOf(address(this), state2.tokenIdFiat) > 0);
     }
@@ -442,7 +510,7 @@ contract testVARQ is Test {
         // Expect the next event with the correct values
         vm.expectEmit(true, true, true, true);
         // Parameters: (currencyId, tokenIdFiat, tokenIdReserve)
-        emit vCurrencyStateAdded(2, 5, 4);  // Updated to match actual values
+        emit vCurrencyStateAdded(2, 5, 4); // Updated to match actual values
 
         // Add another currency state
         varq.addvCurrencyState("KES", "rqtKES", address(this));
@@ -451,7 +519,7 @@ contract testVARQ is Test {
     // Test OracleRateUpdated event
     function testOracleRateUpdatedEvent() public {
         varq.addvCurrencyState("KES", "rqtKES", address(this));
-        
+
         vm.expectEmit(true, true, true, true);
         emit OracleRateUpdated(1, 1e18);
         varq.updateOracleRate(1, 1e18);
@@ -461,25 +529,25 @@ contract testVARQ is Test {
     function testTransferEvents() public {
         uint256 depositAmount = 1e6 * 1e18;
         usdc.approve(address(varq), depositAmount);
-        
+
         // First, expect the ERC20 Transfer from USDC
         vm.expectEmit(true, true, true, true, address(usdc));
         emit IERC20.Transfer(
-            address(this),      // from: testVARQ contract
-            address(varq),      // to: VARQ contract
-            depositAmount       // value
+            address(this), // from: testVARQ contract
+            address(varq), // to: VARQ contract
+            depositAmount // value
         );
-        
+
         // Then, expect the ERC1155 Transfer from VARQ
         vm.expectEmit(true, true, true, true, address(varq));
         emit Transfer(
-            address(this),      // operator: testVARQ contract (msg.sender)
-            address(0),         // from: zero address (minting)
-            address(this),      // to: testVARQ contract
-            1,                  // id: vUSD token ID
-            depositAmount       // amount
+            address(this), // operator: testVARQ contract (msg.sender)
+            address(0), // from: zero address (minting)
+            address(this), // to: testVARQ contract
+            1, // id: vUSD token ID
+            depositAmount // amount
         );
-        
+
         // Now perform the deposit which will emit both events in order
         varq.depositUSD(depositAmount);
     }
@@ -494,11 +562,11 @@ contract testVARQ is Test {
         uint256 depositAmount = 1e6 * 1e18;
         usdc.approve(address(varq), depositAmount);
         varq.depositUSD(depositAmount);
-        
+
         // Mint a small amount to initialize S_r
         uint256 initialMint = 1e5 * 1e18;
         varq.mintvCurrency(nationId, initialMint);
-        
+
         // Wait for a block to ensure protocol rate is calculated
         vm.roll(block.number + 1);
     }
@@ -506,48 +574,52 @@ contract testVARQ is Test {
     function testUSDCTransferEvent() public {
         uint256 depositAmount = 1e6 * 1e18;
         usdc.approve(address(varq), depositAmount);
-        
+
         vm.expectEmit(true, true, true, true, address(usdc));
         emit IERC20.Transfer(address(this), address(varq), depositAmount);
-        
+
         varq.depositUSD(depositAmount);
     }
 
     function testVARQTransferEvent() public {
         uint256 depositAmount = 1e6 * 1e18;
         usdc.approve(address(varq), depositAmount);
-        
+
         vm.expectEmit(true, true, true, true, address(varq));
         emit Transfer(
-            address(this),      // operator (the test contract is the operator)
-            address(0),         // from
-            address(this),      // to
-            1,                  // id
-            depositAmount       // amount
+            address(this), // operator (the test contract is the operator)
+            address(0), // from
+            address(this), // to
+            1, // id
+            depositAmount // amount
         );
-        
+
         varq.depositUSD(depositAmount);
     }
 
     function testMintvCurrency() public {
         // Setup currency state - now returns the nationId
-        uint256 nationId = varq.addvCurrencyState("KES", "rqtKES", address(this));
+        uint256 nationId = varq.addvCurrencyState(
+            "KES",
+            "rqtKES",
+            address(this)
+        );
         varq.updateOracleRate(nationId, 1e18);
 
         // Deposit vUSD
         uint256 depositAmount = 1e6 * 1e18;
         usdc.approve(address(varq), depositAmount);
         varq.depositUSD(depositAmount);
-        
+
         // Mint vCurrency using the returned nationId
         uint256 mintAmount = 1e5 * 1e18;
         varq.mintvCurrency(nationId, mintAmount);
-        
+
         // Get token IDs using the returned nationId
         IVARQ.vCurrencyState memory state = varq.vCurrencyStates(nationId);
         uint256 tokenIdFiat = state.tokenIdFiat;
         uint256 tokenIdReserve = state.tokenIdReserve;
-        
+
         // Verify balances
         assertEq(varq.balanceOf(address(this), tokenIdFiat), mintAmount);
         assertEq(varq.balanceOf(address(this), tokenIdReserve), mintAmount);
@@ -555,19 +627,19 @@ contract testVARQ is Test {
 
     function testFluxDiffWith3PercentHigherOracleRate() public {
         // Setup initial rates
-        uint256 protocolRate = 1e18;  // 1.0
+        uint256 protocolRate = 1e18; // 1.0
         uint256 oracleRate = 1.03e18; // 1.03 (3% higher)
-        
+
         // Calculate flux difference
         uint256 fluxDiff = varq.calculateFluxDiff(protocolRate, oracleRate);
-        
+
         // Print values for debugging (as percentages)
         console.log("Protocol Rate:", protocolRate / 1e16, "%");
         console.log("Oracle Rate:", oracleRate / 1e16, "%");
         console.log("Flux Diff:", fluxDiff / 1e16, "%");
-        
+
         // Assert flux difference is above 0.5 (50%)
-        assertGt(fluxDiff, 0.5e18);    // Greater than 50%
-        assertLt(fluxDiff, 1e18);      // Less than 100%
+        assertGt(fluxDiff, 0.5e18); // Greater than 50%
+        assertLt(fluxDiff, 1e18); // Less than 100%
     }
-} 
+}
