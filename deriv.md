@@ -42,6 +42,10 @@ and
 
 $$X'_R = \frac{k}{Y'_F}$$
 
+=>
+
+
+
 In the “reverse swap” equation, we want to find $X$ (often denoted $R_s$) that satisfies:
 
 1. The portion from the AMM: $\frac{k}{\,X_R - X}$ (how much Fiat is pulled from the AMM if we deposit $X$ of the Reserve).
