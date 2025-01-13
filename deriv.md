@@ -118,20 +118,12 @@ Thus:
 
 Recall the quadratic formula for $a X^2 + b X + c = 0$:
 
-$$
-X 
-= 
-\frac{-b \pm \sqrt{\,b^2 - 4 a c\,}}{2 a}.
-$$
+$$X = \frac{-b \pm \sqrt{\,b^2 - 4 a c\,}}{2 a}$$
 
 1. Compute $\Delta = b^2 - 4 a c.$
 2. Then the two candidate roots are:
 
-$$
-X_{1,2} 
-= 
-\frac{-b \pm \sqrt{\Delta}}{2 a}.
-$$
+$$X_{1,2} = \frac{-b \pm \sqrt{\Delta}}{2 a}$$
 
 3. **Physical Constraint**: We typically require $0 \le X \le X_R$ for a valid solution in an AMM scenario (and we also want $(X_R - X) > 0$). So we pick whichever root satisfies that domain constraint. If both are out of domain or the discriminant is negative, we have no real solution.
 
