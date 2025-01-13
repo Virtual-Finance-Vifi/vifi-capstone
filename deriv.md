@@ -36,7 +36,7 @@ $$\frac{k}{X_R - X} + X P_R = \text{RHS}$$
 
 Multiply both sides by $(X_R - X)$ On the left side, this cancels the fraction:
 
-$$k + (X_R - X)\,(X P_R) = \text{RHS}\,(X_R - X)$$
+$$k + (X_R - X)\,(X P_R) = Y_F + F_e,(X_R - X)$$
 
 Let us expand the terms:
 
@@ -46,11 +46,11 @@ Let us expand the terms:
 
 2. **Right Side**  
 
-   $$\text{RHS}\,(X_R - X)= \text{RHS}\,X_R - \text{RHS}\,X$$
+   $$Y_F + F_e,(X_R - X)= Y_F + F_e,X_R - Y_F + F_e,X$$
 
 So the equality is:
 
-$$k + P_R X_R X - P_R X^2= \text{RHS}\,X_R - \text{RHS}\,X$$
+$$k + P_R X_R X - P_R X^2= Y_F + F_e,X_R - Y_F + F_e,X$$
 
 ---
 
@@ -58,23 +58,23 @@ $$k + P_R X_R X - P_R X^2= \text{RHS}\,X_R - \text{RHS}\,X$$
 
 We want a polynomial in $X$ of the form $0 = a X^2 + b X + c$ Rearrange to make the right side zero:
 
-$$0 = \text{RHS}\,X_R - \text{RHS}\,X - k - P_R X_R X + P_R X^2$$
+$$0 = Y_F + F_e,X_R - Y_F + F_e,X - k - P_R X_R X + P_R X^2$$
 
 Group them carefully by powers of $X$:
 
 - The $X^2$ term is $P_R X^2$
 - The $X^1$ term is $-\,(\text{RHS} + P_R X_R)$
-- The constant term is $\text{RHS}\,X_R - k$
+- The constant term is $Y_F + F_e,X_R - k$
 
 Hence, in standard quadratic form:
 
-$$P_R X^2 - \bigl(\text{RHS} + P_R X_R\bigr)\,X + \bigl(\text{RHS}\,X_R - k\bigr) = 0$$
+$$P_R X^2 - \bigl(\text{RHS} + P_R X_R\bigr)\,X + \bigl(Y_F + F_e,X_R - k\bigr) = 0$$
 
 Thus:
 
 - $a = P_R,$
 - $b = -\bigl[\text{RHS} + P_R\,X_R\bigr],$
-- $c = \text{RHS}\,X_R - k$
+- $c = Y_F + F_e,X_R - k$
 
 ---
 
