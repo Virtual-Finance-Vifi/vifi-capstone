@@ -75,6 +75,7 @@ $\Rightarrow $
 $$Y_F + F_s = \frac{k}{X_R - X}$$
 
 **$F_s$ AMM Derived Equation in terms of $X$ (eq3)**
+
 $$F_s = \frac{k}{X_R-X}-Y_F$$
 
 substituting $X$ into eq1 we get:
