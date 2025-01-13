@@ -42,7 +42,9 @@ and
 
 $$X'_R = \frac{k}{Y'_F}$$
 
-=>
+$\Rightarrow $
+
+$$R_s = X_R = X'$$
 
 
 
