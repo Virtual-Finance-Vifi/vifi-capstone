@@ -2,7 +2,7 @@
 
 We consider a scenario in which we know five parameters:
 
-- $P_R$ — the protocol rate, often $P_R = \frac{S_F}{S_R}$.
+- $`P_R`$ — the protocol rate, often $P_R = \frac{S_F}{S_R}$.
 - $Y_F$ — the current Fiat side of the AMM reserve.
 - $F_e$ — the final Fiat or “exit” amount we wish to account for.
 - $X_R$ — the current Reserve side of the AMM (i.e., R in the pool).
@@ -48,9 +48,7 @@ $$R_s = X_R - X'$$
 
 $$R_s = X_R - \frac{k}{Y'_F}$$
 
-$$
-R_s = X_R - \frac{k}{Y_F + F_s} \tag{1} 
-$$
+$$R_s = X_R - \frac{k}{Y_F + F_s}$$
 
 
 In the “reverse swap” equation, we want to find $X$ (often denoted $R_s$) that satisfies:
