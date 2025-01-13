@@ -130,7 +130,7 @@ $$0 = \left[P_R \right] X^2 + -\left[ (Y_F + F_e) + P_R X_R \right] X + \left[  
 
 Group them carefully by powers of $X$:
 
-- The $X^2$ term is $P_R X^2$
+- The $X^2$ term is $P_R$
 - The $X^1$ term is $-(Y_F + F_e) + P_R X_R$
 - The constant term is $(Y_F + F_e)X_R - k$
 
