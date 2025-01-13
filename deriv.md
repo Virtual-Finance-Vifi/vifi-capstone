@@ -43,10 +43,11 @@ and
 $$X'_R = \frac{k}{Y'_F}$$
 
 $\Rightarrow $
+'''
+$$R_s = X_R - X'$$
 
-$$R_s = X_R = X'$$
-
-
+$$R_s = X_R - \frac{k}{Y'_F}$$
+'''
 
 In the “reverse swap” equation, we want to find $X$ (often denoted $R_s$) that satisfies:
 
