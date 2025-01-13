@@ -28,7 +28,7 @@ thus
 
 $$ F_e = F_s + (R_s \times P_R)$$
 
-$R_s$is obtained from the AMM. the the pair $(R_s,F_r)$ is removed from the global $(S_U,S_R,S_F)$, "unminting" of R's and F's for U's.
+$R_s$ is obtained from the AMM. the the pair $(R_s,F_r)$ is removed from the global $(S_U,S_R,S_F)$, "unminting" of R's and F's for U's.
 
 $R_s$ is obtained via the amm by swapping in $F_s$ where
 
