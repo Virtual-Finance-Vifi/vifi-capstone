@@ -28,89 +28,63 @@ X P_R
 F_e.
 \]
 
-We want $f(X) = 0$. In other words:
+We want $f(X) = 0$ In other words:
 
-$$
-\frac{k}{X_R - X} + X P_R = Y_F + F_e.
-$$
+$$\frac{k}{X_R - X} + X P_R = Y_F + F_e$$
 
 Let us denote the right-hand side as:
 
-$$
-\text{RHS} = Y_F + F_e.
-$$
+$$\text{RHS} = Y_F + F_e$$
 
 Hence,
 
-$$
-\frac{k}{X_R - X} + X P_R = \text{RHS}.
-$$
+$$\frac{k}{X_R - X} + X P_R = \text{RHS}$$
 
 ---
 
 ## Multiply Both Sides by $(X_R - X)$
 
-Multiply both sides by $(X_R - X)$. On the left side, this cancels the fraction:
+Multiply both sides by $(X_R - X)$ On the left side, this cancels the fraction:
 
-$$
-k + (X_R - X)\,(X P_R) = \text{RHS}\,(X_R - X).
-$$
+$$k + (X_R - X)\,(X P_R) = \text{RHS}\,(X_R - X)$$
 
 Let us expand the terms:
 
 1. **Left Side**  
 
-   $$
-   k + (X_R - X)(X P_R)
-   = k + P_R(X_R X - X^2)
-   = k + P_R X_R X - P_R X^2.
-   $$
+   $$k + (X_R - X)(X P_R)= k + P_R(X_R X - X^2)= k + P_R X_R X - P_R X^2$$
 
 2. **Right Side**  
 
-   $$
-   \text{RHS}\,(X_R - X)
-   = \text{RHS}\,X_R - \text{RHS}\,X.
-   $$
+   $$\text{RHS}\,(X_R - X)= \text{RHS}\,X_R - \text{RHS}\,X$$
 
 So the equality is:
 
-$$
-k + P_R X_R X - P_R X^2
-= \text{RHS}\,X_R - \text{RHS}\,X.
-$$
+$$k + P_R X_R X - P_R X^2= \text{RHS}\,X_R - \text{RHS}\,X$$
 
 ---
 
 ## Bring All Terms to One Side
 
-We want a polynomial in $X$ of the form $0 = a X^2 + b X + c.$ Rearrange to make the right side zero:
+We want a polynomial in $X$ of the form $0 = a X^2 + b X + c$ Rearrange to make the right side zero:
 
-$$
-0 
-= \text{RHS}\,X_R - \text{RHS}\,X - k - P_R X_R X + P_R X^2.
-$$
+$$0 = \text{RHS}\,X_R - \text{RHS}\,X - k - P_R X_R X + P_R X^2$$
 
 Group them carefully by powers of $X$:
 
-- The $X^2$ term is $P_R X^2.$
-- The $X^1$ term is $-\,(\text{RHS} + P_R X_R).$
-- The constant term is $\text{RHS}\,X_R - k.$
+- The $X^2$ term is $P_R X^2$
+- The $X^1$ term is $-\,(\text{RHS} + P_R X_R)$
+- The constant term is $\text{RHS}\,X_R - k$
 
 Hence, in standard quadratic form:
 
-$$
-P_R X^2 
-- \bigl(\text{RHS} + P_R X_R\bigr)\,X 
-+ \bigl(\text{RHS}\,X_R - k\bigr) 
-= 0.
-$$
+$$P_R X^2 - \bigl(\text{RHS} + P_R X_R\bigr)\,X + \bigl(\text{RHS}\,X_R - k\bigr) = 0$$
 
 Thus:
 
 - $a = P_R,$
 - $b = -\bigl[\text{RHS} + P_R\,X_R\bigr],$
-- $c = \text{RHS}\,X_R - k.$
+- $c = \text{RHS}\,X_R - k$
 
 ---
 
@@ -120,7 +94,7 @@ Recall the quadratic formula for $a X^2 + b X + c = 0$:
 
 $$X = \frac{-b \pm \sqrt{\,b^2 - 4 a c\,}}{2 a}$$
 
-1. Compute $\Delta = b^2 - 4 a c.$
+1. Compute $\Delta = b^2 - 4 a c$
 2. Then the two candidate roots are:
 
 $$X_{1,2} = \frac{-b \pm \sqrt{\Delta}}{2 a}$$
