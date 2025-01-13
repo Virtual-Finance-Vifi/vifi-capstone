@@ -48,7 +48,9 @@ $$R_s = X_R - X'$$
 
 $$R_s = X_R - \frac{k}{Y'_F}$$
 
-$$R_s = X_R - \frac{k}{Y_F + F_s} \tag{1} $$
+$$
+R_s = X_R - \frac{k}{Y_F + F_s} \tag{1} 
+$$
 
 
 In the “reverse swap” equation, we want to find $X$ (often denoted $R_s$) that satisfies:
