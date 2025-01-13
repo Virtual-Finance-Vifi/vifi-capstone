@@ -77,6 +77,14 @@ $$Y_F + F_s = \frac{k}{X_R - X}
 **$F_s$ AMM Derived Equation in terms of $X$ (eq3)**
 $$F_s = \frac{k}{X_R-X}-Y_F$$
 
+substituting $X$ into eq1 we get:
+
+$$ F_e = F_s + (X \times P_R)$$
+
+we can substitute $F_s$ from eq3 and we get:
+
+$$ F_e = [\frac{k}{X_R-X}-Y_F] + (X \times P_R)$$
+
 In the “reverse swap” equation, we want to find $X$ (often denoted $R_s$) that satisfies:
 
 1. The portion from the AMM: $\frac{k}{\,X_R - X}$ (how much Fiat is pulled from the AMM if we deposit $X$ of the Reserve).
