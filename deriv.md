@@ -26,7 +26,7 @@ $$ F_r = R_s \times P_R$$
 
 thus
 
-**F_e protocol redemptiom equation (eq1)**\
+**F_e protocol redemptiom equation (eq1)**
 
 $$ F_e = F_s + (R_s \times P_R)$$
 
@@ -50,7 +50,7 @@ $$R_s = X_R - X'$$
 
 $$R_s = X_R - \frac{k}{Y'_F}$$
 
-**R_s AMM Derived Equation (eq2)**\
+**R_s AMM Derived Equation (eq2)**
 
 $$R_s = X_R - \frac{k}{Y_F + F_s}$$
 
