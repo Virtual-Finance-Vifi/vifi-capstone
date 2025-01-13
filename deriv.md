@@ -27,6 +27,7 @@ $$ F_r = R_s \times P_R$$
 thus
 
 **F_e protocol redemptiom equation (eq1)**\
+
 $$ F_e = F_s + (R_s \times P_R)$$
 
 $R_s$ is obtained from the AMM. the the pair $(R_s,F_r)$ is removed from the global $(S_U,S_R,S_F)$, "unminting" of R's and F's for U's.
@@ -50,6 +51,7 @@ $$R_s = X_R - X'$$
 $$R_s = X_R - \frac{k}{Y'_F}$$
 
 **R_s AMM Derived Equation (eq2)**\
+
 $$R_s = X_R - \frac{k}{Y_F + F_s}$$
 
 
