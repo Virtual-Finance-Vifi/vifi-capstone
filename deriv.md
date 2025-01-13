@@ -114,7 +114,7 @@ Let us expand the terms:
 
 So the equality is:
 
-$$k + P_R X_R X - P_R X^2= Y_F + F_e,X_R - Y_F + F_e,X$$
+$$k + P_R X_R X - P_R X^2= (Y_F + F_e)X_R - (Y_F + F_e)X$$
 
 ---
 
@@ -122,12 +122,14 @@ $$k + P_R X_R X - P_R X^2= Y_F + F_e,X_R - Y_F + F_e,X$$
 
 We want a polynomial in $X$ of the form $0 = a X^2 + b X + c$ Rearrange to make the right side zero:
 
-$$0 = Y_F + F_e,X_R - Y_F + F_e,X - k - P_R X_R X + P_R X^2$$
+$$0 = (Y_F + F_e)X_R - (Y_F + F_e)X - k - P_R X_R X + P_R X^2$$
+
+$$0 = \left[P_R \right] X^2 + -\left[ (Y_F + F_e) + P_R X_R \right] X (Y_F + F_e)X_R - k $$
 
 Group them carefully by powers of $X$:
 
 - The $X^2$ term is $P_R X^2$
-- The $X^1$ term is $-\,(Y_F + F_e + P_R X_R)$
+- The $X^1$ term is $-(Y_F + F_e) + P_R X_R$
 - The constant term is $Y_F + F_e,X_R - k$
 
 Hence, in standard quadratic form:
