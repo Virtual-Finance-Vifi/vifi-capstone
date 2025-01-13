@@ -16,17 +16,7 @@ In the “reverse swap” equation, we want to find $X$ (often denoted $R_s$) th
 2. The portion from the protocol redemption: $X \times P_R$.
 3. These combined must match the total Fiat needed, which is $Y_F + F_e$, or equivalently we shift terms and end up with:
 
-\[
-f(X) 
-\;=\; 
-\frac{k}{X_R - X} 
-\;-\; 
-Y_F 
-\;+\; 
-X P_R 
-\;-\; 
-F_e.
-\]
+$$f(X) = \frac{k}{X_R - X} -Y_F + X P_R -F_e$$
 
 We want $f(X) = 0$ In other words:
 
