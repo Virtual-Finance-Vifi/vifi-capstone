@@ -54,6 +54,23 @@ $$R_s = X_R - \frac{k}{Y'_F}$$
 
 $$R_s = X_R - \frac{k}{Y_F + F_s}$$
 
+---
+
+We have eq1 and eq2 which both express R_s and F_s which are unknown.
+
+Let $X := R_s$
+
+sub $X$ into eq2
+
+$$X = X_R - \frac{k}{Y_F + F_s}$$
+
+solve for $F_s$ in terms of $X$:
+
+$$ X_R = X = \frac{k}{Y_F + F_s} $$
+
+solve for $F_s$ in terms of $X$
+
+$\Rightarrow $
 
 In the “reverse swap” equation, we want to find $X$ (often denoted $R_s$) that satisfies:
 
