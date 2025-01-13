@@ -40,7 +40,7 @@ $$Y'_F = Y_F + F_s$$
 
 and
 
-$$X'_R = \frac{k]{Y'_F}$$
+$$X'_R = \frac{k}{Y'_F}$$
 
 In the “reverse swap” equation, we want to find $X$ (often denoted $R_s$) that satisfies:
 
