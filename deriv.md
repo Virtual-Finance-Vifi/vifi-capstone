@@ -83,7 +83,7 @@ $$ F_e = F_s + (X \times P_R)$$
 
 we can substitute $F_s$ from eq3 and we get:
 
-$$ F_e = [\frac{k}{X_R-X}-Y_F] + (X \times P_R)$$
+$$ F_e = \[\frac{k}{X_R-X}-Y_F\] + (X \times P_R)$$
 
 In the “reverse swap” equation, we want to find $X$ (often denoted $R_s$) that satisfies:
 
