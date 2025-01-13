@@ -34,9 +34,13 @@ $R_s$ is obtained via the amm by swapping in $F_s$ where
 
 $$X_R \times Y_f = k$$
 
-this
+thus
 
 $$Y'_F = Y_F + F_s$$
+
+and
+
+$$X'_R = \frac{k]{Y'_F}$$
 
 In the “reverse swap” equation, we want to find $X$ (often denoted $R_s$) that satisfies:
 
