@@ -12,7 +12,7 @@ We consider a scenario in which we know five parameters:
 
 We have the total amount of fiat being 'exited' denoted as $F_e$ 
 
-$F_e$ must be split into $F_s$ and $F_r such that
+$F_e$ must be split into $F_s$ and $F_r$ such that
 
 $$F_e =  F_s + F_r$$
 
