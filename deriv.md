@@ -28,6 +28,16 @@ thus
 
 $$ F_e = F_s + (R_s \times P_R)$$
 
+$R_s$is obtained from the AMM. the the pair $(R_s,F_r)$ is removed from the global $(S_U,S_R,S_F)$, "unminting" of R's and F's for U's.
+
+$R_s$ is obtained via the amm by swapping in $F_s$ where
+
+$$X_R \times Y_f = k$$
+
+this
+
+$$Y'_F = Y_F + F_s$$
+
 In the “reverse swap” equation, we want to find $X$ (often denoted $R_s$) that satisfies:
 
 1. The portion from the AMM: $\frac{k}{\,X_R - X}$ (how much Fiat is pulled from the AMM if we deposit $X$ of the Reserve).
