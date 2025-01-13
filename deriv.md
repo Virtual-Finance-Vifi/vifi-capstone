@@ -83,13 +83,9 @@ $$ F_e = F_s + (X \times P_R)$$
 
 we can substitute $F_s$ from eq3 and we get:
 
-$$ F_e = \[\frac{k}{X_R-X}-Y_F\] + (X \times P_R)$$
+$$ F_e = \left[\frac{k}{X_R-X}-Y_F\right] + (X \times P_R)$$
 
-In the “reverse swap” equation, we want to find $X$ (often denoted $R_s$) that satisfies:
-
-1. The portion from the AMM: $\frac{k}{\,X_R - X}$ (how much Fiat is pulled from the AMM if we deposit $X$ of the Reserve).
-2. The portion from the protocol redemption: $X \times P_R$.
-3. These combined must match the total Fiat needed, which is $Y_F + F_e$, or equivalently we shift terms and end up with:
+we can defind $f(X)$ as LHS - RHS:
 
 $$f(X) = \frac{k}{X_R - X} -Y_F + X P_R -F_e$$
 
