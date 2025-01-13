@@ -2,7 +2,7 @@
 
 We consider a scenario in which we know five parameters:
 
-- $`P_R`$ — the protocol rate, often $P_R = \frac{S_F}{S_R}$.
+- $P_R$ — the protocol rate, often $P_R = \frac{S_F}{S_R}$.
 - $Y_F$ — the current Fiat side of the AMM reserve.
 - $F_e$ — the final Fiat or “exit” amount we wish to account for.
 - $X_R$ — the current Reserve side of the AMM (i.e., R in the pool).
@@ -26,6 +26,7 @@ $$ F_r = R_s \times P_R$$
 
 thus
 
+**F_e protocol redemptiom equation (eq1)**\
 $$ F_e = F_s + (R_s \times P_R)$$
 
 $R_s$ is obtained from the AMM. the the pair $(R_s,F_r)$ is removed from the global $(S_U,S_R,S_F)$, "unminting" of R's and F's for U's.
@@ -48,6 +49,7 @@ $$R_s = X_R - X'$$
 
 $$R_s = X_R - \frac{k}{Y'_F}$$
 
+**R_s AMM Derived Equation (eq2)**\
 $$R_s = X_R - \frac{k}{Y_F + F_s}$$
 
 
