@@ -94,14 +94,6 @@ We want $f(X) = 0$ In other words:
 
 $$\frac{k}{X_R - X} + X P_R = Y_F + F_e$$
 
-Let us denote the right-hand side as:
-
-$$\text{RHS} = Y_F + F_e$$
-
-Hence,
-
-$$\frac{k}{X_R - X} + X P_R = \text{RHS}$$
-
 ---
 
 ## Multiply Both Sides by $(X_R - X)$
