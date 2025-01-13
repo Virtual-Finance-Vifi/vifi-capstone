@@ -21,9 +21,11 @@ where
 - $F_r$ is the amount of fiat used for protocol redemption
 
 However for protocol redemption, $F_r$ must satisfy 
+
 $$ F_r = R_s \times P_R$$
 
 thus
+
 $$ F_e = F_s + (R_s \times P_R)$$
 
 In the “reverse swap” equation, we want to find $X$ (often denoted $R_s$) that satisfies:
