@@ -1,5 +1,3 @@
-# derivation.txt
-
 # Full Derivation of the Reverse Swap Quadratic
 
 We consider a scenario in which we know five parameters:
@@ -9,6 +7,24 @@ We consider a scenario in which we know five parameters:
 - $F_e$ — the final Fiat or “exit” amount we wish to account for.
 - $X_R$ — the current Reserve side of the AMM (i.e., R in the pool).
 - $k$ — the AMM constant, often $k = X_R \times Y_F$ in a constant-product or some generalized form.
+
+---
+
+We have the total amount of fiat being 'exited' denoted as $F_e$ 
+
+$F_e$ must be split into $F_s$ and $F_r such that
+
+$$F_e =  F_s + F_r$$
+
+where
+- $F_s$ is the amount of fiat used from a swap to obtain R_s
+- $F_r$ is the amount of fiat used for protocol redemption
+
+However for protocol redemption, $F_r$ must satisfy 
+$$ F_r = R_s \times P_R$$
+
+thus
+$$ F_e = F_s + (R_s \times P_R)$$
 
 In the “reverse swap” equation, we want to find $X$ (often denoted $R_s$) that satisfies:
 
