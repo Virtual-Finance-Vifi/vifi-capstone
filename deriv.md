@@ -63,7 +63,7 @@ $$0 = Y_F + F_e,X_R - Y_F + F_e,X - k - P_R X_R X + P_R X^2$$
 Group them carefully by powers of $X$:
 
 - The $X^2$ term is $P_R X^2$
-- The $X^1$ term is $-\,(\text{RHS} + P_R X_R)$
+- The $X^1$ term is $-\,(Y_F + F_e + P_R X_R)$
 - The constant term is $Y_F + F_e,X_R - k$
 
 Hence, in standard quadratic form:
@@ -73,7 +73,7 @@ $$P_R X^2 - \bigl(\text{RHS} + P_R X_R\bigr)\,X + \bigl(Y_F + F_e,X_R - k\bigr) 
 Thus:
 
 - $a = P_R,$
-- $b = -\bigl[\text{RHS} + P_R\,X_R\bigr],$
+- $b = -\bigl[Y_F + F_e + P_R\,X_R\bigr],$
 - $c = Y_F + F_e,X_R - k$
 
 ---
