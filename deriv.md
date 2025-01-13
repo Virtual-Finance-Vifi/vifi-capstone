@@ -100,7 +100,7 @@ $$\frac{k}{X_R - X} + X P_R = Y_F + F_e$$
 
 Multiply both sides by $(X_R - X)$ On the left side, this cancels the fraction:
 
-$$k + (X_R - X)\,(X P_R) = Y_F + F_e,(X_R - X)$$
+$$k + (X_R - X)(X P_R) = (Y_F + F_e)(X_R - X)$$
 
 Let us expand the terms:
 
@@ -110,7 +110,7 @@ Let us expand the terms:
 
 2. **Right Side**  
 
-   $$Y_F + F_e,(X_R - X)= Y_F + F_e,X_R - Y_F + F_e,X$$
+   $$(Y_F + F_e)(X_R - X)= (Y_F + F_e)X_R - (Y_F + F_e)X$$
 
 So the equality is:
 
