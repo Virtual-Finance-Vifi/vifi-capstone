@@ -64,7 +64,7 @@ Using the **constant-product** formula:
   \]
 - The pool must keep $k$ constant, so the **new** Fiat balance is
   \[
-    Y'_F = \frac{k}{\,X_R + R_s\,}.
+    Y'_F = \frac{k}{X_R + R_s}.
   \]
 - Therefore, the **Fiat** that flows out to the user from this swap is
   \[
@@ -76,7 +76,7 @@ Using the **constant-product** formula:
     =
     Y_F
     -
-    \frac{k}{\,X_R + R_s\,}.
+    \frac{k}{X_R + R_s}.
   \tag{1}
   \]
 
@@ -86,73 +86,35 @@ Using the **constant-product** formula:
 
 The user wants a **final** Fiat amount $F_o$, which must satisfy:
 
-$$
-F_o 
-=
-F_i + F_s.
-$$
+$$F_o =F_i + F_s$$
 
 Hence,
 
-$$
-F_s 
-=
-F_o - F_i.
-\tag{2}
-$$
+$$F_s =F_o - F_i.\tag{2}$$
 
 We already have an expression for $F_s$ from the AMM in (1).  **Equate** these two forms:
 
-$$
-F_o - F_i 
-= 
-Y_F - \frac{k}{\,X_R + R_s\,}.
-$$
+$$F_o - F_i = Y_F - \frac{k}{X_R + R_s}$$
 
 Rearrange:
 
-$$
-Y_F -\bigl(F_o - F_i\bigr)
-=
-\frac{k}{\,X_R + R_s\,}.
-$$
+$$Y_F -\bigl(F_o - F_i\bigr)=\frac{k}{X_R + R_s}$$
 
 Define a convenient constant:
 
-$$
-M 
-:= 
-Y_F - \bigl(F_o - F_i\bigr)
-= 
-Y_F - F_o + F_i.
-$$
+$$M := Y_F - \bigl(F_o - F_i\bigr)= Y_F - F_o + F_i$$
 
 Thus,
 
-$$
-M = \frac{k}{\,X_R + R_s\,}.
-$$
+$$M = \frac{k}{X_R + R_s}$$
 
 Take reciprocals:
 
-$$
-X_R + R_s
-=
-\frac{k}{\,M\,}.
-$$
+$$X_R + R_s=\frac{k}{M}$$
 
 So the **required Reserve** $R_s$ to deposit into the AMM is:
 
-$$
-R_s 
-=
-\frac{k}{\,M\,} 
--
-X_R
-\quad\text{where}
-\quad
-M = Y_F - F_o + F_i.
-$$
+$$R_s =\frac{k}{M} -X_R\quad\text{where} \quadM = Y_F - F_o + F_i$$
 
 ---
 
@@ -160,21 +122,13 @@ $$
 
 Putting it all together:
 
-$$
-\boxed{
-R_s 
-=
-\frac{k}{\,Y_F - F_o + F_i\,}
--
-X_R
-}
-$$
+$$\boxed{R_s =\frac{k}{Y_F - F_o + F_i}-X_R}$$
 
 provided that $Y_F - F_o + F_i \neq 0$.
 
 **Notes**:
 
-- $R_s \ge 0$ requires $\frac{k}{\,Y_F - F_o + F_i\,} \ge X_R$.  
+- $R_s \ge 0$ requires $\frac{k}{Y_F - F_o + F_i} \ge X_R$.  
 - If $R_s > R_i$ is implied, the system cannot swap that much Reserve (since only $R_i$ was issued).  
 - $Y_F - F_o + F_i$ must be positive for a feasible deposit (otherwise you’d get negative or infinite $R_s$).
 
@@ -204,12 +158,6 @@ provided that $Y_F - F_o + F_i \neq 0$.
 
 The **forward issuance-swap** derivation shows that, if the user (or protocol) wants $F_o$ (“F out”) in total, knowing they already hold (or are credited with) $F_i$ from issuance, the **required** Reserve deposit $R_s$ into a constant-product AMM is
 
-$$
-R_s 
-=
-\frac{k}{\,Y_F - (F_o - F_i)\,}
--
-X_R,
-$$
+$$R_s =\frac{k}{Y_F - (F_o - F_i)}-X_R,$$
 
 where $k = X_R \times Y_F$ is the AMM invariant. This formula directly follows from the single swap equation, without introducing a second redemption constraint, and therefore **no quadratic** arises in this forward scenario.
