@@ -44,7 +44,7 @@ This document parallels the “reverse swap” derivation but proceeds in a **fo
 3. Finally, the user’s total “F out” is:
 
 $$
-F_o \;=\; F_i \;+\; F_s.
+F_o = F_i + F_s.
 $$
 
 Here:  
@@ -69,13 +69,13 @@ Using the **constant-product** formula:
 - Therefore, the **Fiat** that flows out to the user from this swap is
   \[
     F_s
-    \;=\;
+    =
     Y_F
-    \;-\;
+    -
     Y'_F
-    \;=\;
+    =
     Y_F
-    \;-\;
+    -
     \frac{k}{\,X_R + R_s\,}.
   \tag{1}
   \]
@@ -88,7 +88,7 @@ The user wants a **final** Fiat amount $F_o$, which must satisfy:
 
 $$
 F_o 
-\;=\;
+=
 F_i + F_s.
 $$
 
@@ -96,24 +96,24 @@ Hence,
 
 $$
 F_s 
-\;=\;
-F_o \;-\; F_i.
+=
+F_o - F_i.
 \tag{2}
 $$
 
 We already have an expression for $F_s$ from the AMM in (1).  **Equate** these two forms:
 
 $$
-F_o \;-\; F_i 
-\;=\; 
-Y_F \;-\; \frac{k}{\,X_R + R_s\,}.
+F_o - F_i 
+= 
+Y_F - \frac{k}{\,X_R + R_s\,}.
 $$
 
 Rearrange:
 
 $$
-Y_F \;-\;\bigl(F_o - F_i\bigr)
-\;=\;
+Y_F -\bigl(F_o - F_i\bigr)
+=
 \frac{k}{\,X_R + R_s\,}.
 $$
 
@@ -121,23 +121,23 @@ Define a convenient constant:
 
 $$
 M 
-\;:=\; 
-Y_F \;-\; \bigl(F_o - F_i\bigr)
-\;=\; 
-Y_F \;-\; F_o \;+\; F_i.
+:= 
+Y_F - \bigl(F_o - F_i\bigr)
+= 
+Y_F - F_o + F_i.
 $$
 
 Thus,
 
 $$
-M \;=\; \frac{k}{\,X_R + R_s\,}.
+M = \frac{k}{\,X_R + R_s\,}.
 $$
 
 Take reciprocals:
 
 $$
 X_R + R_s
-\;=\;
+=
 \frac{k}{\,M\,}.
 $$
 
@@ -145,9 +145,9 @@ So the **required Reserve** $R_s$ to deposit into the AMM is:
 
 $$
 R_s 
-\;=\;
+=
 \frac{k}{\,M\,} 
-\;-\;
+-
 X_R
 \quad\text{where}
 \quad
@@ -163,9 +163,9 @@ Putting it all together:
 $$
 \boxed{
 R_s 
-\;=\;
+=
 \frac{k}{\,Y_F - F_o + F_i\,}
-\;-\;
+-
 X_R
 }
 $$
@@ -174,7 +174,7 @@ provided that $Y_F - F_o + F_i \neq 0$.
 
 **Notes**:
 
-- $R_s \ge 0$ requires $\frac{k}{\,Y_F - F_o + F_i\,} \;\ge\; X_R$.  
+- $R_s \ge 0$ requires $\frac{k}{\,Y_F - F_o + F_i\,} \ge X_R$.  
 - If $R_s > R_i$ is implied, the system cannot swap that much Reserve (since only $R_i$ was issued).  
 - $Y_F - F_o + F_i$ must be positive for a feasible deposit (otherwise you’d get negative or infinite $R_s$).
 
@@ -206,9 +206,9 @@ The **forward issuance-swap** derivation shows that, if the user (or protocol) w
 
 $$
 R_s 
-\;=\;
+=
 \frac{k}{\,Y_F - (F_o - F_i)\,}
-\;-\;
+-
 X_R,
 $$
 
