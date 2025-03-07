@@ -44,7 +44,7 @@ This modular design is validated through a numerical example.
 | $R_{s,n}$           | Reserved Quota swapped out in reverse swap                                      | VP-AMM        |
 | $F_{r,n}$           | Fiat non-USD redeemed in reverse swap                                           | VP-AMM/FQS    |
 | $F_{t,n}$           | Total ERC20 Fiat minted at step $n$                                             | VP-AMM        |
-| $\text{init_ratio}$ | Initial VP-AMM provisioning ratio (set to 2)                                    | VP-AMM        |
+| $\text{initRatio}$ | Initial VP-AMM provisioning ratio (set to 2)                                    | VP-AMM        |
 
 3. Model Description
 --------------------
@@ -69,7 +69,7 @@ The FQS tracks the core supplies and oracle rate:
 The VP-AMM manages the liquidity pool and ERC20 minting:
 
 - **Initialization**:
-  $X_{R,0} = R_{i,0}, \quad Y_{F,0} = R_{i,0} \cdot \text{init_ratio}, \quad Z_{F,0} = F_{i,0} - Y_{F,0}$
+  $X_{R,0} = R_{i,0}, \quad Y_{F,0} = R_{i,0} \cdot \text{initRatio}, \quad Z_{F,0} = F_{i,0} - Y_{F,0}$
   $F_{t,0} = 0$
 
 - **Forward Swap**:
@@ -100,7 +100,7 @@ The IDS computes derived metrics:
 
 ### 4.1 Initialization ($n = 0$)
 
-- **Inputs**: $U_{i,0} = 100$, $O_R = 7$, $\text{init_ratio} = 2$.
+- **Inputs**: $U_{i,0} = 100$, $O_R = 7$, $\text{initRatio} = 2$.
 - **FQS**: 
   - $S_{u,0} = 100$, $F_{i,0} = 700$, $R_{i,0} = 100$.
   - $S_{r,0} = 100$, $S_{f,0} = 700$.
