@@ -2,25 +2,27 @@
 
 ## Abstract
 
-The Virtual Fiat Environment (VFE) for Trinidad and Tobago Dollar (TTD) is a decentralized financial protocol managing perpetual instruments—Reserved Quota ($R$, a fiat currency call option) and Fiat non-USD ($F$, a perpetual TTD)—through a modular architecture. Core modules include the Fiat Quota Supply (FQS), Virtual Perpetual Automated Market Maker (VP-AMM), and Implicit Derived State (IDS), integrated with auxiliary contracts (Virtualizer, Treasury, Farm) to facilitate USDV collateralization, yield generation, and TTDV issuance. This paper provides a comprehensive mathematical framework, operational logic, smart contract specifications, and a detailed numerical example.
+The Virtual Fiat Environment (VFE) for Trinidad and Tobago Dollar (TTD) is a decentralized financial protocol managing perpetual instruments—Reserved Quota ($R$, a fiat currency call option) and Fiat non-USD ($F$, a perpetual TTD)—through a modular architecture. Core modules include the Fiat Quota Supply (FQS), Virtual Perpetual Automated Market Maker (VP-AMM), and Implicit Derived State (IDS), augmented by auxiliary contracts (Virtualizer, Treasury, Farm, Stable Swap) to facilitate USDV collateralization, yield generation, TTDV issuance, and TTDC conversion. This paper provides a comprehensive mathematical framework, operational logic, smart contract specifications, and a detailed numerical example.
 
 The VFE supports:
 - **Forward Swap**: Deposits USDV ($U_{i,n}$) to issue $R$ and $F$, minting ERC20 TTDV ($F_{e,n}$).
 - **Reverse Swap**: Redeems ERC20 TTDV ($F_{e,n}$) to unmint $R$ and $F$, withdrawing USDV.
+- **Stable Swap**: Converts TTDV ($X_v$) to TTDC ($Y_c$) via a Constant Sum AMM (CSAMM).
 
 ---
 
 ## 1. Introduction
 
-The VFE-TTD protocol bridges USDV (a virtual USD stablecoin) with TTDV (a virtual TTD token) via a modular design:
-- **Fiat Quota Supply (FQS)**: Tracks USDV reserves and total supplies of $R$ and $F$.
+The VFE-TTD protocol bridges USDV with TTDV and TTDC via:
+- **Fiat Quota Supply (FQS)**: Tracks USDV reserves and total $R$ and $F$.
 - **Virtual Perpetual Automated Market Maker (VP-AMM)**: Manages liquidity and TTDV minting/burning.
-- **Implicit Derived State (IDS)**: Computes derived metrics for system stability.
+- **Implicit Derived State (IDS)**: Computes derived metrics for stability.
 - **Virtualizer**: Converts USDC to USDV.
 - **Treasury**: Manages USDV collateral and yield.
 - **Farm**: Vault for staking USDV into sUSDV, integrating VFE assets.
+- **Stable Swap (CSAMM)**: Facilitates 1:1 TTDV-to-TTDC swaps with $X_v + Y_c = k_{ss}$.
 
-This document details all mathematical equations, derivations, and a seven-step example with users Alice, Bob, and Charlie.
+This document details all mathematics, including the CSAMM, and a seven-step example.
 
 ---
 
@@ -59,40 +61,50 @@ This document details all mathematical equations, derivations, and a seven-step 
 | $T_R$               | Total rate, $T_R = O_R + \text{initRatio} = 9$                                 | Farm          |
 | $A_R$               | AMM-implied rate, $A_R = \frac{Y_{F,n}}{X_{R,n}}$                              | VP-AMM        |
 | $U_{fee}$           | Swap fee in USDV (1% of $\Delta U$)                                            | VP-AMM        |
+| $X_{v,n}$           | TTDV in Stable Swap at step $n$                                                | Stable Swap   |
+| $Y_{c,n}$           | TTDC in Stable Swap at step $n$                                                | Stable Swap   |
+| $k_{ss}$            | Stable Swap constant sum, $k_{ss} = X_{v,n} + Y_{c,n}$                         | Stable Swap   |
+| $\Delta X_v$        | TTDV input to Stable Swap                                                      | Stable Swap   |
+| $\Delta Y_c$        | TTDC output from Stable Swap                                                   | Stable Swap   |
 
 ---
 
 ## 3. Smart Contract Modules and Roles
 
 ### 3.1 Virtualizer
-- **Role**: Converts USDC to USDV (ID 1) and back, ensuring collateral backing.
+- **Role**: Converts USDC to USDV (ID 1) and back.
 - **State Variables**: None (relies on Treasury $U_{nr,n}$).
 - **Functions**: Deposit, Withdraw.
 
 ### 3.2 Treasury
-- **Role**: Manages USDV collateral, tracking staked and non-staked reserves.
+- **Role**: Manages USDV collateral, tracking reserves.
 - **State Variables**: $U_{nr,n}$, $U_{ns,n}$, $U_{p,n}$, $U_{y,n}$.
 - **Functions**: Deposit, StakeBurn.
 
 ### 3.3 Farm (sUSDV Vault)
-- **Role**: Vault for staking USDV into sUSDV (ID 2), integrating VFE assets and distributing yield.
+- **Role**: Vault for staking USDV into sUSDV (ID 2), integrating VFE.
 - **State Variables**: $S_{u,n}$, $S_{v,n}(3, Farm)$, $U_{val,n}$, $S_{v,n}(2)$.
 - **Functions**: Stake, InitializeVFE.
 
 ### 3.4 Fiat Quota Supply (FQS)
-- **Role**: Tracks total USDV reserves and supplies of $R$ and $F$.
+- **Role**: Tracks USDV reserves and total $R$ and $F$.
 - **State Variables**: $S_{u,n}$, $S_{r,n}$, $S_{f,n}$, $O_R$.
 - **Functions**: Initialize, ForwardSwap, ReverseSwap.
 
 ### 3.5 Virtual Perpetual Automated Market Maker (VP-AMM)
-- **Role**: Manages liquidity pool and mints/burns ERC20 TTDV (ID 3).
+- **Role**: Manages liquidity pool and mints/burns TTDV (ID 3).
 - **State Variables**: $X_{R,n}$, $Y_{F,n}$, $Z_{F,n}$, $K$, $F_{t,n}$.
 - **Functions**: ForwardSwap, ReverseSwap.
 
 ### 3.6 Implicit Derived State (IDS)
-- **Role**: Computes derived metrics for system stability (read-only).
+- **Role**: Computes derived metrics (read-only).
 - **State Variables**: $P_{R,n}$, $\phi_n$, $\omega_n$, $\lambda(\phi_n, \omega_n)$.
 - **Functions**: ComputeMetrics.
+
+### 3.7 Stable Swap (CSAMM)
+- **Role**: Facilitates 1:1 swaps between TTDV ($X_v$) and TTDC ($Y_c$).
+- **State Variables**: $X_{v,n}$, $Y_{c,n}$, $k_{ss}$.
+- **Functions**: SwapTTDVtoTTDC.
 
 ---
 
@@ -106,7 +118,7 @@ This document details all mathematical equations, derivations, and a seven-step 
   - **Equations**: 
     - $S_{v,n}(1, addr) = S_{v,n-1}(1, addr) + U_d$
     - $U_{nr,n} = U_{nr,n-1} + U_d$
-  - **Output**: None (updates state).
+  - **Output**: None.
 - **Function: Withdraw**
   - **Inputs**: $U_w$ (USDV amount).
   - **State Used**: $S_{v,n-1}(1, addr)$, $U_{nr,n-1}$.
@@ -115,7 +127,6 @@ This document details all mathematical equations, derivations, and a seven-step 
     - $S_{v,n}(1, addr) = S_{v,n-1}(1, addr) - U_w$
     - $U_{nr,n} = U_{nr,n-1} - U_w$
     - Constraint: $U_{nr,n} \geq S_{v,n}(1)$
-  - **Output**: None.
 
 ### 4.2 Treasury
 - **Function: Deposit**
@@ -123,7 +134,6 @@ This document details all mathematical equations, derivations, and a seven-step 
   - **State Used**: $U_{nr,n-1}$.
   - **State Updated**: $U_{nr,n}$.
   - **Equations**: $U_{nr,n} = U_{nr,n-1} + U_d$
-  - **Output**: None.
 - **Function: StakeBurn**
   - **Inputs**: $U_{stake}$ (USDV amount).
   - **State Used**: $U_{nr,n-1}$, $U_{ns,n-1}$.
@@ -131,7 +141,6 @@ This document details all mathematical equations, derivations, and a seven-step 
   - **Equations**: 
     - $U_{nr,n} = U_{nr,n-1} - U_{stake}$
     - $U_{ns,n} = U_{ns,n-1} + U_{stake}$
-  - **Output**: None.
 
 ### 4.3 Farm
 - **Function: Stake**
@@ -162,7 +171,6 @@ This document details all mathematical equations, derivations, and a seven-step 
     - $K = X_{R,n} \cdot Y_{F,n}$
     - $F_{t,n} = 0$
     - OTC: $S_{v,n}(3, Farm) -= 90$, $S_{u,n} += 10$
-  - **Output**: None.
 
 ### 4.4 Fiat Quota Supply (FQS)
 - **Function: Initialize**
@@ -170,7 +178,6 @@ This document details all mathematical equations, derivations, and a seven-step 
   - **State Used**: $S_{u,n-1}$, $S_{r,n-1}$, $S_{f,n-1}$, $O_R$.
   - **State Updated**: $S_{u,n}$, $S_{r,n}$, $S_{f,n}$.
   - **Equations**: See Farm’s InitializeVFE.
-  - **Output**: None.
 - **Function: ForwardSwap**
   - **Inputs**: $U_{i,n}$ (USDV amount).
   - **State Used**: $S_{u,n-1}$, $S_{r,n-1}$, $S_{f,n-1}$, $\phi_n$, $\omega_n$.
@@ -181,7 +188,7 @@ This document details all mathematical equations, derivations, and a seven-step 
     - $R_{i,n} = U_{i,n} \cdot \lambda(\phi_n, \omega_n)$
     - $S_{r,n} = S_{r,n-1} + R_{i,n}$
     - $S_{f,n} = S_{f,n-1} + F_{i,n}$
-  - **Output**: $R_{i,n}$, $F_{i,n}$ (passed to VP-AMM).
+  - **Output**: $R_{i,n}$, $F_{i,n}$ (to VP-AMM).
 - **Function: ReverseSwap**
   - **Inputs**: $F_{e,n}$ (TTDV amount to burn).
   - **State Used**: $S_{u,n-1}$, $S_{r,n-1}$, $S_{f,n-1}$, $P_{R,n}$.
@@ -211,7 +218,7 @@ This document details all mathematical equations, derivations, and a seven-step 
   - **State Used**: $X_{R,n-1}$, $Y_{F,n-1}$, $K$, $P_{R,n}$, $F_{t,n-1}$.
   - **State Updated**: $X_{R,n}$, $Y_{F,n}$, $F_{t,n}$.
   - **Equations**: See derivation below.
-  - **Output**: $R_{s,n}$ (passed to FQS).
+  - **Output**: $R_{s,n}$ (to FQS).
 
 ### 4.6 Implicit Derived State (IDS)
 - **Function: ComputeMetrics**
@@ -224,6 +231,17 @@ This document details all mathematical equations, derivations, and a seven-step 
     - $\omega_n = \frac{S_{u,n}}{S_{r,n}}$
     - $\lambda(\phi_n, \omega_n) = \begin{cases} 1 & \text{if } \phi_n > 1 \text{ and } \omega_n = 1 \\ \phi_n & \text{otherwise} \end{cases}$
   - **Output**: $P_{R,n}$, $\phi_n$, $\omega_n$, $\lambda_n$.
+
+### 4.7 Stable Swap (CSAMM)
+- **Function: SwapTTDVtoTTDC**
+  - **Inputs**: $\Delta X_v$ (TTDV amount to swap).
+  - **State Used**: $X_{v,n-1}$, $Y_{c,n-1}$, $k_{ss}$.
+  - **State Updated**: $X_{v,n}$, $Y_{c,n}$.
+  - **Equations**: 
+    - $X_{v,n} = X_{v,n-1} + \Delta X_v$
+    - $Y_{c,n} = k_{ss} - X_{v,n}$
+    - $\Delta Y_c = Y_{c,n-1} - Y_{c,n} = \Delta X_v$ (ideal 1:1 swap)
+  - **Output**: $\Delta Y_c$ (TTDC received).
 
 ---
 
@@ -278,6 +296,24 @@ This document details all mathematical equations, derivations, and a seven-step 
   - $X = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$
   - Constraint: $0 \leq X \leq X_{R,n-1}$
 
+### 5.3 Stable Swap (CSAMM) Derivation
+- **Definition**: A Constant Sum AMM where $X_{v,n} + Y_{c,n} = k_{ss}$, targeting a 1:1 peg between TTDV and TTDC.
+- **Given**: $X_{v,n-1}$, $Y_{c,n-1}$, $k_{ss}$, $\Delta X_v$ (TTDV input).
+- **Objective**: Compute $\Delta Y_c$ (TTDC output).
+- **Equations**:
+  - Initial state: $X_{v,n-1} + Y_{c,n-1} = k_{ss}$
+  - After swap: 
+    - $X_{v,n} = X_{v,n-1} + \Delta X_v$
+    - $Y_{c,n} = k_{ss} - X_{v,n}$
+    - $\Delta Y_c = Y_{c,n-1} - Y_{c,n}$
+  - Substitute:
+    - $Y_{c,n} = k_{ss} - (X_{v,n-1} + \Delta X_v)$
+    - $\Delta Y_c = Y_{c,n-1} - (k_{ss} - X_{v,n-1} - \Delta X_v)$
+    - $\Delta Y_c = (Y_{c,n-1} + X_{v,n-1} + \Delta X_v) - k_{ss} - \Delta X_v$
+    - Since $Y_{c,n-1} + X_{v,n-1} = k_{ss}$:
+    - $\Delta Y_c = k_{ss} + \Delta X_v - k_{ss} - \Delta X_v = \Delta X_v$
+- **Result**: $\Delta Y_c = \Delta X_v$ (1:1 swap, no slippage in ideal CSAMM).
+
 ---
 
 ## 6. Numerical Example
@@ -286,15 +322,15 @@ This document details all mathematical equations, derivations, and a seven-step 
 - $O_R = 7$, $\text{initRatio} = 2$, $T_R = 9$.
 
 ### $n = 1$: Alice Converts 300 USDC to 300 USDV
-- **Virtualizer**: $S_{v,1}(1, Alice) = 0 + 300 = 300$, $U_{nr,1} = 0 + 300 = 300$.
+- **Virtualizer**: $S_{v,1}(1, Alice) = 300$, $U_{nr,1} = 300$.
 - **Treasury**: $S_{u,1} (\text{Treasury}) = 300$.
 - **Farm**: $S_{u,1} = 0$, $U_{val,1} = 0$.
 
 ### $n = 2$: Alice Stakes 100 USDV into sUSDV
 - **Farm**: 
-  - $S_{v,2}(1, Alice) = 300 - 100 = 200$
+  - $S_{v,2}(1, Alice) = 200$
   - $S_{stake} = 100$, $S_{v,2}(2, Alice) = 100$, $S_{v,2}(2) = 100$
-  - $S_{u,2} = 0 + 100 = 100$
+  - $S_{u,2} = 100$
 - **Treasury**: $U_{nr,2} = 200$, $U_{ns,2} = 100$, $S_{u,2} (\text{Treasury}) = 300$.
 - **Valuation**: $U_{val,2} = 100$.
 
@@ -310,15 +346,17 @@ This document details all mathematical equations, derivations, and a seven-step 
 
 ### $n = 5$: Farm Initializes VFE-TTD, Bob LPs Stable Swap
 - **FQS**: 
-  - $S_{u,5} = 100 - 100 = 0$
-  - $F_{i,n} = 100 \cdot 7 = 700$
-  - $R_{i,n} = 100 \cdot 1 = 100$
+  - $S_{u,5} = 0$
+  - $F_{i,n} = 700$
+  - $R_{i,n} = 100$
   - $S_{r,5} = 100$, $S_{f,5} = 700$
 - **VP-AMM**: 
   - $X_{R,5} = 100$, $Y_{F,5} = 200$, $K = 20,000$
-  - $Z_{F,5} = 700 - 200 = 500$, $S_{v,5}(3, Farm) = 500$
+  - $Z_{F,5} = 500$, $S_{v,5}(3, Farm) = 500$
   - OTC: $S_{v,5}(3, Farm) = 410$, $S_{u,5} = 10$
-- **Stable Swap**: $X = 90$, $Y = 90$, $k = 180$.
+- **Stable Swap**: 
+  - Initial: $X_{v,5} = 90$, $Y_{c,5} = 90$, $k_{ss} = 180$
+  - Bob: $S_{v,5}(3, Bob) = 90$
 - **IDS**: $P_{R,5} = 7$, $\phi_5 = 1$, $\omega_5 = 0.1$.
 - **Valuation**: $U_{val,5} = 10 + \frac{200}{9} + \frac{100 \cdot 2}{9} + \frac{410}{9} = 100$.
 
@@ -329,20 +367,25 @@ This document details all mathematical equations, derivations, and a seven-step 
 
 ### $n = 7$: Charlie Converts 1 USDV to TTDV, Then TTDC
 - **Forward Swap**:
-  - $U_{i,n} = 1$, $S_{u,7} = 10 + 1 = 11$
-  - $F_{i,n} = 1 \cdot 7 = 7$
-  - $R_{i,n} = 1 \cdot 1 = 1$
+  - $U_{i,n} = 1$, $S_{u,7} = 11$
+  - $F_{i,n} = 7$, $R_{i,n} = 1$
   - $S_{r,7} = 101$, $S_{f,7} = 707$
   - $X_{R,7} = 101$, $Y_{F,7} = \frac{20,000}{101} \approx 198.0198$
-  - $F_{s,n} = 200 - 198.0198 \approx 1.9802$
-  - $F_{e,n} = 1.9802 + 7 = 8.9802$
-- **Stable Swap**: 
-  - $\Delta Y = 90 - \frac{180}{90 + 8.9802} \approx 8.1665$
-  - $X = 98.9802$, $Y = 81.8335$
+  - $F_{s,n} = 1.9802$, $F_{e,n} = 8.9802$
+  - $F_{t,7} = 8.9802$, $S_{v,7}(3, Charlie) = 8.9802$
+- **Stable Swap**:
+  - **Pre-Swap**: $X_{v,6} = 90$, $Y_{c,6} = 90$, $k_{ss} = 180$
+  - **Input**: $\Delta X_v = 8.9802$
+  - **Equations**:
+    - $X_{v,7} = X_{v,6} + \Delta X_v = 90 + 8.9802 = 98.9802$
+    - $Y_{c,7} = k_{ss} - X_{v,7} = 180 - 98.9802 = 81.0198$
+    - $\Delta Y_c = Y_{c,6} - Y_{c,7} = 90 - 81.0198 = 8.9802$
+  - **Post-Swap**: $X_{v,7} = 98.9802$, $Y_{c,7} = 81.0198$
+  - Charlie: $S_{v,7}(3, Charlie) = 0$, receives 8.9802 TTDC
 - **Valuation**: $U_{val,7} = 11 + \frac{198.0198}{9} + \frac{101 \cdot 1.9606}{9} + \frac{410}{9} \approx 100.56$.
 
 ---
 
 ## 7. Conclusion
 
-The VFE-TTD protocol fully specifies all mathematical operations, with the reverse swap quadratic providing a robust solution mechanism. Future work will incorporate $U_{fee}$ explicitly.
+The VFE-TTD protocol now fully specifies the CSAMM mathematics, ensuring clarity at $n = 7$. The Stable Swap maintains a 1:1 peg, validated by $\Delta Y_c = \Delta X_v$.
