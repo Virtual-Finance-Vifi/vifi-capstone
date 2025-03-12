@@ -1,28 +1,29 @@
-# Virtual Fiat Environment (VFE-TTD): A Modular Decentralized Financial Protocol
+# Virtual Finance Protocol (ViFi Protocol): A Modular Decentralized Financial Framework
 
 ## Abstract
 
-The Virtual Fiat Environment (VFE) for Trinidad and Tobago Dollar (TTD) is a decentralized financial protocol managing perpetual instruments—Reserved Quota ($R$, a fiat currency call option) and Fiat non-USD ($F$, a perpetual TTD)—through a modular architecture. Core modules include the Fiat Quota Supply (FQS), Virtual Perpetual Automated Market Maker (VP-AMM), and Implicit Derived State (IDS), augmented by auxiliary contracts (Virtualizer, Treasury, Farm, Stable Swap) to facilitate USDV collateralization, yield generation, TTDV issuance, and TTDC conversion. This paper provides a comprehensive mathematical framework, operational logic, smart contract specifications, and a detailed numerical example.
+The Virtual Finance Protocol (ViFi Protocol) is a decentralized financial framework designed to manage virtual fiat ecosystems, with the Virtual Fiat Environment (VFE) for Trinidad and Tobago Dollar (TTD) as a key component. Each VFE manages perpetual instruments—Reserved Quota ($R$, a fiat currency call option) and Fiat non-USD ($F$, a perpetual TTD)—via a modular architecture. The VFE consists of the Virtual Access Reserved Quota (VARQ) and the Virtual Perpetual Automated Market Maker (VP-AMM). The VARQ integrates the Fiat Quota Supply (FQS) and Implicit Derived State (IDS), while auxiliary contracts (Virtualizer, Treasury, Farm, Stable Swap) facilitate USDV collateralization, yield generation, TTDV issuance, and TTDC conversion. This paper provides a comprehensive mathematical framework, operational logic, smart contract specifications, and a numerical example for the VFE-TTD within the ViFi Protocol.
 
-The VFE supports:
-- **Forward Swap**: Deposits USDV ($U_{i,n}$) to issue $R$ and $F$, minting ERC20 TTDV ($F_{e,n}$).
-- **Reverse Swap**: Redeems ERC20 TTDV ($F_{e,n}$) to unmint $R$ and $F$, withdrawing USDV.
+The VFE-TTD supports:
+- **Forward Swap**: Deposits USDV ($U_{i,n}$) into VARQ to issue $R$ and $F$, then VP-AMM mints ERC20 TTDV ($F_{e,n}$).
+- **Reverse Swap**: Redeems ERC20 TTDV ($F_{e,n}$) via VP-AMM to unmint $R$ and $F$, then VARQ withdraws USDV.
 - **Stable Swap**: Converts TTDV ($X_v$) to TTDC ($Y_c$) via a Constant Sum AMM (CSAMM).
+
+Multiple VFEs can be instantiated from the Farm, each tailored to specific fiat currencies.
 
 ---
 
 ## 1. Introduction
 
-The VFE-TTD protocol bridges USDV with TTDV and TTDC via:
-- **Fiat Quota Supply (FQS)**: Tracks USDV reserves and total $R$ and $F$.
+The Virtual Finance Protocol (ViFi Protocol) establishes a framework for virtual fiat systems, with the VFE as its operational core. For the Trinidad and Tobago Dollar (TTD), the VFE-TTD bridges USDV (virtual USD stablecoin) with TTDV (virtual TTD token) and TTDC (local real-world asset) through:
+- **Virtual Access Reserved Quota (VARQ)**: Comprises FQS (tracks USDV reserves and total $R$ and $F$) and IDS (computes derived metrics for stability).
 - **Virtual Perpetual Automated Market Maker (VP-AMM)**: Manages liquidity and TTDV minting/burning.
-- **Implicit Derived State (IDS)**: Computes derived metrics for stability.
 - **Virtualizer**: Converts USDC to USDV.
 - **Treasury**: Manages USDV collateral and yield.
-- **Farm**: Vault for staking USDV into sUSDV, integrating VFE assets.
+- **Farm**: Vault for staking USDV into sUSDV, capable of instantiating multiple VFEs.
 - **Stable Swap (CSAMM)**: Facilitates 1:1 TTDV-to-TTDC swaps with $X_v + Y_c = k_{ss}$.
 
-This document details all mathematics, including the CSAMM, and a seven-step example.
+This document details the VFE-TTD’s mathematics, including CSAMM, and a seven-step example, emphasizing its role within the broader ViFi Protocol.
 
 ---
 
@@ -30,17 +31,17 @@ This document details all mathematics, including the CSAMM, and a seven-step exa
 
 | **Symbol**          | **Description**                                                                 | **Component** |
 |---------------------|---------------------------------------------------------------------------------|----------------|
-| $U_{i,n}$           | USDV input at step $n$ (deposited into FQS)                                     | FQS           |
-| $S_{u,n}$           | Supply of USDV reserve in Farm at step $n$                                     | Farm/FQS      |
-| $S_{r,n}$           | Total supply of Reserved Quota ($R$) at step $n$                               | FQS           |
-| $S_{f,n}$           | Total supply of Fiat non-USD ($F$) in system at step $n$                       | FQS           |
-| $O_R$               | Oracle rate (TTD:USD, fixed at 7)                                              | FQS           |
-| $P_{R,n}$           | Protocol rate, $P_{R,n} = \frac{S_{f,n}}{S_{r,n}}$                             | IDS           |
-| $\phi_n$            | Flux, $\phi_n = \frac{P_{R,n}}{O_R}$                                           | IDS           |
-| $\omega_n$          | Reserve ratio, $\omega_n = \frac{S_{u,n}}{S_{r,n}}$                            | IDS           |
-| $\lambda(\phi_n, \omega_n)$ | Funding rate, adjusts issuance                                     | IDS           |
-| $R_{i,n}$           | Reserved Quota issued at step $n$                                              | VP-AMM/FQS    |
-| $F_{i,n}$           | Fiat non-USD issued at step $n$                                                | VP-AMM/FQS    |
+| $U_{i,n}$           | USDV input at step $n$ (deposited into VARQ/FQS)                                | VARQ/FQS      |
+| $S_{u,n}$           | Supply of USDV reserve in Farm at step $n$                                     | Farm/VARQ/FQS |
+| $S_{r,n}$           | Total supply of Reserved Quota ($R$) at step $n$                               | VARQ/FQS      |
+| $S_{f,n}$           | Total supply of Fiat non-USD ($F$) in system at step $n$                       | VARQ/FQS      |
+| $O_R$               | Oracle rate (TTD:USD, fixed at 7)                                              | VARQ/FQS      |
+| $P_{R,n}$           | Protocol rate, $P_{R,n} = \frac{S_{f,n}}{S_{r,n}}$                             | VARQ/IDS      |
+| $\phi_n$            | Flux, $\phi_n = \frac{P_{R,n}}{O_R}$                                           | VARQ/IDS      |
+| $\omega_n$          | Reserve ratio, $\omega_n = \frac{S_{u,n}}{S_{r,n}}$                            | VARQ/IDS      |
+| $\lambda(\phi_n, \omega_n)$ | Funding rate, adjusts issuance                                     | VARQ/IDS      |
+| $R_{i,n}$           | Reserved Quota issued at step $n$                                              | VFE/VP-AMM/VARQ |
+| $F_{i,n}$           | Fiat non-USD issued at step $n$                                                | VFE/VP-AMM/VARQ |
 | $X_{R,n}$           | Reserved Quota in VP-AMM at step $n$                                           | VP-AMM        |
 | $Y_{F,n}$           | Fiat non-USD in VP-AMM at step $n$                                             | VP-AMM        |
 | $Z_{F,n}$           | Excess Fiat non-USD outside VP-AMM (Farm-held) at step $n$                     | VP-AMM        |
@@ -48,7 +49,7 @@ This document details all mathematics, including the CSAMM, and a seven-step exa
 | $F_{s,n}$           | Fiat non-USD swapped (positive in forward, negative in reverse)                | VP-AMM        |
 | $F_{e,n}$           | ERC20 TTDV minted/burned at step $n$                                           | VP-AMM        |
 | $R_{s,n}$           | Reserved Quota swapped out in reverse swap                                     | VP-AMM        |
-| $F_{r,n}$           | Fiat non-USD redeemed in reverse swap                                          | VP-AMM/FQS    |
+| $F_{r,n}$           | Fiat non-USD redeemed in reverse swap                                          | VP-AMM/VARQ   |
 | $F_{t,n}$           | Total ERC20 TTDV minted at step $n$                                            | VP-AMM        |
 | $\text{initRatio}$ | Initial VP-AMM provisioning ratio (set to 2)                                    | VP-AMM        |
 | $S_{v,n}(id, addr)$ | Balance of VToken $id$ for address $addr$ at step $n$                          | All           |
@@ -71,37 +72,42 @@ This document details all mathematics, including the CSAMM, and a seven-step exa
 
 ## 3. Smart Contract Modules and Roles
 
-### 3.1 Virtualizer
-- **Role**: Converts USDC to USDV (ID 1) and back.
-- **State Variables**: None (relies on Treasury $U_{nr,n}$).
-- **Functions**: Deposit, Withdraw.
+### 3.1 ViFi Protocol Overview
+- **Role**: The Virtual Finance Protocol (ViFi Protocol) provides the framework for creating multiple VFEs, each managing a specific fiat currency ecosystem.
+- **Components**: Virtualizer, Treasury, Farm, and multiple VFEs (e.g., VFE-TTD).
 
-### 3.2 Treasury
-- **Role**: Manages USDV collateral, tracking reserves.
-- **State Variables**: $U_{nr,n}$, $U_{ns,n}$, $U_{p,n}$, $U_{y,n}$.
-- **Functions**: Deposit, StakeBurn.
+### 3.2 Virtual Fiat Environment (VFE)
+- **Role**: Manages perpetual instruments ($R$ and $F$) for a specific fiat currency (e.g., TTD).
+- **Subcomponents**: VARQ and VP-AMM.
 
-### 3.3 Farm (sUSDV Vault)
-- **Role**: Vault for staking USDV into sUSDV (ID 2), integrating VFE.
-- **State Variables**: $S_{u,n}$, $S_{v,n}(3, Farm)$, $U_{val,n}$, $S_{v,n}(2)$.
-- **Functions**: Stake, InitializeVFE.
+#### 3.2.1 Virtual Access Reserved Quota (VARQ)
+- **Role**: Tracks reserves and computes metrics, handling issuance and redemption.
+- **Subcomponents**:
+  - **Fiat Quota Supply (FQS)**: Tracks $S_{u,n}$, $S_{r,n}$, $S_{f,n}$, $O_R$.
+  - **Implicit Derived State (IDS)**: Computes $P_{R,n}$, $\phi_n$, $\omega_n$, $\lambda(\phi_n, \omega_n)$ (read-only).
+- **Functions**: ForwardSwap (via FQS), ReverseSwap (via FQS), ComputeMetrics (via IDS).
 
-### 3.4 Fiat Quota Supply (FQS)
-- **Role**: Tracks USDV reserves and total $R$ and $F$.
-- **State Variables**: $S_{u,n}$, $S_{r,n}$, $S_{f,n}$, $O_R$.
-- **Functions**: Initialize, ForwardSwap, ReverseSwap.
-
-### 3.5 Virtual Perpetual Automated Market Maker (VP-AMM)
+#### 3.2.2 Virtual Perpetual Automated Market Maker (VP-AMM)
 - **Role**: Manages liquidity pool and mints/burns TTDV (ID 3).
 - **State Variables**: $X_{R,n}$, $Y_{F,n}$, $Z_{F,n}$, $K$, $F_{t,n}$.
 - **Functions**: ForwardSwap, ReverseSwap.
 
-### 3.6 Implicit Derived State (IDS)
-- **Role**: Computes derived metrics (read-only).
-- **State Variables**: $P_{R,n}$, $\phi_n$, $\omega_n$, $\lambda(\phi_n, \omega_n)$.
-- **Functions**: ComputeMetrics.
+### 3.3 Virtualizer
+- **Role**: Converts USDC to USDV (ID 1) and back.
+- **State Variables**: None (relies on Treasury $U_{nr,n}$).
+- **Functions**: Deposit, Withdraw.
 
-### 3.7 Stable Swap (CSAMM)
+### 3.4 Treasury
+- **Role**: Manages USDV collateral, tracking reserves.
+- **State Variables**: $U_{nr,n}$, $U_{ns,n}$, $U_{p,n}$, $U_{y,n}$.
+- **Functions**: Deposit, StakeBurn.
+
+### 3.5 Farm (sUSDV Vault)
+- **Role**: Vault for staking USDV into sUSDV (ID 2), instantiating multiple VFEs.
+- **State Variables**: $S_{u,n}$, $S_{v,n}(3, Farm)$, $U_{val,n}$, $S_{v,n}(2)$.
+- **Functions**: Stake, InitializeVFE.
+
+### 3.6 Stable Swap (CSAMM)
 - **Role**: Facilitates 1:1 swaps between TTDV ($X_v$) and TTDC ($Y_c$).
 - **State Variables**: $X_{v,n}$, $Y_{c,n}$, $k_{ss}$.
 - **Functions**: SwapTTDVtoTTDC.
@@ -118,7 +124,6 @@ This document details all mathematics, including the CSAMM, and a seven-step exa
   - **Equations**: 
     - $S_{v,n}(1, addr) = S_{v,n-1}(1, addr) + U_d$
     - $U_{nr,n} = U_{nr,n-1} + U_d$
-  - **Output**: None.
 - **Function: Withdraw**
   - **Inputs**: $U_w$ (USDV amount).
   - **State Used**: $S_{v,n-1}(1, addr)$, $U_{nr,n-1}$.
@@ -155,54 +160,57 @@ This document details all mathematics, including the CSAMM, and a seven-step exa
     - $S_{u,n} = S_{u,n-1} + U_{stake}$
   - **Output**: $S_{stake}$ (sUSDV minted).
 - **Function: InitializeVFE**
-  - **Inputs**: $U_{i,n}$ (USDV amount for VFE).
+  - **Inputs**: $U_{i,n}$ (USDV amount for new VFE).
   - **State Used**: $S_{u,n-1}$, $S_{v,n-1}(3, Farm)$.
-  - **State Updated**: $S_{u,n}$, $S_{v,n}(3, Farm)$, $S_{r,n}$, $S_{f,n}$, $X_{R,n}$, $Y_{F,n}$, $Z_{F,n}$, $K$, $F_{t,n}$.
+  - **State Updated**: $S_{u,n}$, $S_{v,n}(3, Farm)$, creates new VFE (VARQ + VP-AMM).
   - **Equations**: 
     - $S_{u,n} = S_{u,n-1} - U_{i,n}$
     - $F_{i,n} = U_{i,n} \cdot O_R$
     - $R_{i,n} = U_{i,n} \cdot \lambda(\phi_n, \omega_n)$
-    - $S_{r,n} = S_{r,n-1} + R_{i,n}$
-    - $S_{f,n} = S_{f,n-1} + F_{i,n}$
-    - $X_{R,n} = R_{i,n}$
-    - $Y_{F,n} = R_{i,n} \cdot \text{initRatio}$
-    - $Z_{F,n} = F_{i,n} - Y_{F,n}$
+    - $S_{r,n} = S_{r,n-1} + R_{i,n}$ (in VARQ/FQS)
+    - $S_{f,n} = S_{f,n-1} + F_{i,n}$ (in VARQ/FQS)
+    - $X_{R,n} = R_{i,n}$ (in VP-AMM)
+    - $Y_{F,n} = R_{i,n} \cdot \text{initRatio}$ (in VP-AMM)
+    - $Z_{F,n} = F_{i,n} - Y_{F,n}$ (in VP-AMM)
     - $S_{v,n}(3, Farm) = Z_{F,n}$
-    - $K = X_{R,n} \cdot Y_{F,n}$
-    - $F_{t,n} = 0$
+    - $K = X_{R,n} \cdot Y_{F,n}$ (in VP-AMM)
+    - $F_{t,n} = 0$ (in VP-AMM)
     - OTC: $S_{v,n}(3, Farm) -= 90$, $S_{u,n} += 10$
 
-### 4.4 Fiat Quota Supply (FQS)
-- **Function: Initialize**
-  - **Inputs**: $U_{i,n}$ (USDV amount).
-  - **State Used**: $S_{u,n-1}$, $S_{r,n-1}$, $S_{f,n-1}$, $O_R$.
-  - **State Updated**: $S_{u,n}$, $S_{r,n}$, $S_{f,n}$.
-  - **Equations**: See Farm’s InitializeVFE.
+### 4.4 Virtual Access Reserved Quota (VARQ)
 - **Function: ForwardSwap**
   - **Inputs**: $U_{i,n}$ (USDV amount).
-  - **State Used**: $S_{u,n-1}$, $S_{r,n-1}$, $S_{f,n-1}$, $\phi_n$, $\omega_n$.
-  - **State Updated**: $S_{u,n}$, $S_{r,n}$, $S_{f,n}$.
+  - **State Used**: $S_{u,n-1}$, $S_{r,n-1}$, $S_{f,n-1}$, $\phi_n$, $\omega_n$ (via FQS/IDS).
+  - **State Updated**: $S_{u,n}$, $S_{r,n}$, $S_{f,n}$ (in FQS).
   - **Equations**: 
     - $S_{u,n} = S_{u,n-1} + U_{i,n}$
     - $F_{i,n} = U_{i,n} \cdot O_R$
-    - $R_{i,n} = U_{i,n} \cdot \lambda(\phi_n, \omega_n)$
+    - $R_{i,n} = U_{i,n} \cdot \lambda(\phi_n, \omega_n)$ (IDS computes $\lambda$)
     - $S_{r,n} = S_{r,n-1} + R_{i,n}$
     - $S_{f,n} = S_{f,n-1} + F_{i,n}$
   - **Output**: $R_{i,n}$, $F_{i,n}$ (to VP-AMM).
 - **Function: ReverseSwap**
-  - **Inputs**: $F_{e,n}$ (TTDV amount to burn).
-  - **State Used**: $S_{u,n-1}$, $S_{r,n-1}$, $S_{f,n-1}$, $P_{R,n}$.
-  - **State Updated**: $S_{u,n}$, $S_{r,n}$, $S_{f,n}$.
+  - **Inputs**: $R_{s,n}$, $F_{r,n}$ (from VP-AMM).
+  - **State Used**: $S_{u,n-1}$, $S_{r,n-1}$, $S_{f,n-1}$, $P_{R,n}$ (via FQS/IDS).
+  - **State Updated**: $S_{u,n}$, $S_{r,n}$, $S_{f,n}$ (in FQS).
   - **Equations**: 
-    - $F_{r,n} = R_{s,n} \cdot P_{R,n}$ (from VP-AMM)
     - $S_{u,n} = S_{u,n-1} - R_{s,n}$
     - $S_{r,n} = S_{r,n-1} - R_{s,n}$
     - $S_{f,n} = S_{f,n-1} - F_{r,n}$
   - **Output**: $R_{s,n}$ (USDV withdrawn).
+- **Function: ComputeMetrics** (IDS)
+  - **Inputs**: None (read-only).
+  - **State Used**: $S_{f,n}$, $S_{r,n}$, $S_{u,n}$, $O_R$ (from FQS).
+  - **Equations**: 
+    - $P_{R,n} = \frac{S_{f,n}}{S_{r,n}}$
+    - $\phi_n = \frac{P_{R,n}}{O_R}$
+    - $\omega_n = \frac{S_{u,n}}{S_{r,n}}$
+    - $\lambda(\phi_n, \omega_n) = \begin{cases} 1 & \text{if } \phi_n > 1 \text{ and } \omega_n = 1 \\ \phi_n & \text{otherwise} \end{cases}$
+  - **Output**: $P_{R,n}$, $\phi_n$, $\omega_n$, $\lambda_n$.
 
 ### 4.5 Virtual Perpetual Automated Market Maker (VP-AMM)
 - **Function: ForwardSwap**
-  - **Inputs**: $R_{i,n}$, $F_{i,n}$ (from FQS).
+  - **Inputs**: $R_{i,n}$, $F_{i,n}$ (from VARQ).
   - **State Used**: $X_{R,n-1}$, $Y_{F,n-1}$, $K$, $Z_{F,n-1}$, $F_{t,n-1}$.
   - **State Updated**: $X_{R,n}$, $Y_{F,n}$, $Z_{F,n}$, $F_{t,n}$.
   - **Equations**: 
@@ -215,24 +223,12 @@ This document details all mathematics, including the CSAMM, and a seven-step exa
   - **Output**: $F_{e,n}$ (TTDV minted).
 - **Function: ReverseSwap**
   - **Inputs**: $F_{e,n}$ (TTDV to burn).
-  - **State Used**: $X_{R,n-1}$, $Y_{F,n-1}$, $K$, $P_{R,n}$, $F_{t,n-1}$.
+  - **State Used**: $X_{R,n-1}$, $Y_{F,n-1}$, $K$, $P_{R,n}$ (from VARQ/IDS), $F_{t,n-1}$.
   - **State Updated**: $X_{R,n}$, $Y_{F,n}$, $F_{t,n}$.
   - **Equations**: See derivation below.
-  - **Output**: $R_{s,n}$ (to FQS).
+  - **Output**: $R_{s,n}$, $F_{r,n}$ (to VARQ).
 
-### 4.6 Implicit Derived State (IDS)
-- **Function: ComputeMetrics**
-  - **Inputs**: None (read-only).
-  - **State Used**: $S_{f,n}$, $S_{r,n}$, $S_{u,n}$, $O_R$.
-  - **State Updated**: None.
-  - **Equations**: 
-    - $P_{R,n} = \frac{S_{f,n}}{S_{r,n}}$
-    - $\phi_n = \frac{P_{R,n}}{O_R}$
-    - $\omega_n = \frac{S_{u,n}}{S_{r,n}}$
-    - $\lambda(\phi_n, \omega_n) = \begin{cases} 1 & \text{if } \phi_n > 1 \text{ and } \omega_n = 1 \\ \phi_n & \text{otherwise} \end{cases}$
-  - **Output**: $P_{R,n}$, $\phi_n$, $\omega_n$, $\lambda_n$.
-
-### 4.7 Stable Swap (CSAMM)
+### 4.6 Stable Swap (CSAMM)
 - **Function: SwapTTDVtoTTDC**
   - **Inputs**: $\Delta X_v$ (TTDV amount to swap).
   - **State Used**: $X_{v,n-1}$, $Y_{c,n-1}$, $k_{ss}$.
@@ -240,7 +236,7 @@ This document details all mathematics, including the CSAMM, and a seven-step exa
   - **Equations**: 
     - $X_{v,n} = X_{v,n-1} + \Delta X_v$
     - $Y_{c,n} = k_{ss} - X_{v,n}$
-    - $\Delta Y_c = Y_{c,n-1} - Y_{c,n} = \Delta X_v$ (ideal 1:1 swap)
+    - $\Delta Y_c = Y_{c,n-1} - Y_{c,n} = \Delta X_v$
   - **Output**: $\Delta Y_c$ (TTDC received).
 
 ---
@@ -248,10 +244,10 @@ This document details all mathematics, including the CSAMM, and a seven-step exa
 ## 5. Mathematical Equations and Derivations
 
 ### 5.1 Forward Swap
-- **FQS**: 
+- **VARQ (FQS)**: 
   - $S_{u,n} = S_{u,n-1} + U_{i,n}$
   - $F_{i,n} = U_{i,n} \cdot O_R$
-  - $R_{i,n} = U_{i,n} \cdot \lambda(\phi_n, \omega_n)$
+  - $R_{i,n} = U_{i,n} \cdot \lambda(\phi_n, \omega_n)$ (via IDS)
 - **VP-AMM**: 
   - $X_{R,n} = X_{R,n-1} + R_{i,n}$
   - $Y_{F,n} = \frac{K}{X_{R,n}}$
@@ -259,8 +255,8 @@ This document details all mathematics, including the CSAMM, and a seven-step exa
   - $F_{e,n} = F_{s,n} + F_{i,n}$
 
 ### 5.2 Reverse Swap Quadratic Derivation
-- **Given**: $F_{e,n}$, $P_{R,n}$, $Y_{F,n-1}$, $X_{R,n-1}$, $K$.
-- **Objective**: Solve for $R_{s,n}$ and $F_{s,n}$.
+- **Given**: $F_{e,n}$, $P_{R,n}$ (from VARQ/IDS), $Y_{F,n-1}$, $X_{R,n-1}$, $K$.
+- **Objective**: Solve for $R_{s,n}$ and $F_{s,n}$ in VP-AMM.
 - **Equations**:
   1. **Protocol Redemption**: 
      - $F_{e,n} = F_{s,n} + F_{r,n}$
@@ -295,28 +291,21 @@ This document details all mathematics, including the CSAMM, and a seven-step exa
 - **Quadratic Formula**: 
   - $X = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$
   - Constraint: $0 \leq X \leq X_{R,n-1}$
+- **VARQ**: Uses $R_{s,n}$ and $F_{r,n}$ to update reserves.
 
 ### 5.3 Stable Swap (CSAMM) Derivation
-- **Definition**: A Constant Sum AMM where $X_{v,n} + Y_{c,n} = k_{ss}$, targeting a 1:1 peg between TTDV and TTDC.
-- **Given**: $X_{v,n-1}$, $Y_{c,n-1}$, $k_{ss}$, $\Delta X_v$ (TTDV input).
-- **Objective**: Compute $\Delta Y_c$ (TTDC output).
+- **Definition**: $X_{v,n} + Y_{c,n} = k_{ss}$, targeting 1:1 TTDV-to-TTDC peg.
+- **Given**: $X_{v,n-1}$, $Y_{c,n-1}$, $k_{ss}$, $\Delta X_v$.
+- **Objective**: Compute $\Delta Y_c$.
 - **Equations**:
-  - Initial state: $X_{v,n-1} + Y_{c,n-1} = k_{ss}$
-  - After swap: 
-    - $X_{v,n} = X_{v,n-1} + \Delta X_v$
-    - $Y_{c,n} = k_{ss} - X_{v,n}$
-    - $\Delta Y_c = Y_{c,n-1} - Y_{c,n}$
-  - Substitute:
-    - $Y_{c,n} = k_{ss} - (X_{v,n-1} + \Delta X_v)$
-    - $\Delta Y_c = Y_{c,n-1} - (k_{ss} - X_{v,n-1} - \Delta X_v)$
-    - $\Delta Y_c = (Y_{c,n-1} + X_{v,n-1} + \Delta X_v) - k_{ss} - \Delta X_v$
-    - Since $Y_{c,n-1} + X_{v,n-1} = k_{ss}$:
-    - $\Delta Y_c = k_{ss} + \Delta X_v - k_{ss} - \Delta X_v = \Delta X_v$
-- **Result**: $\Delta Y_c = \Delta X_v$ (1:1 swap, no slippage in ideal CSAMM).
+  - $X_{v,n} = X_{v,n-1} + \Delta X_v$
+  - $Y_{c,n} = k_{ss} - X_{v,n}$
+  - $\Delta Y_c = Y_{c,n-1} - Y_{c,n} = \Delta X_v$
+- **Result**: $\Delta Y_c = \Delta X_v$ (1:1 swap).
 
 ---
 
-## 6. Numerical Example
+## 6. Numerical Example (VFE-TTD)
 
 ### Initial Conditions
 - $O_R = 7$, $\text{initRatio} = 2$, $T_R = 9$.
@@ -345,7 +334,8 @@ This document details all mathematics, including the CSAMM, and a seven-step exa
 - **Farm**: $S_{u,4} = 100$, $U_{val,4} = 100$.
 
 ### $n = 5$: Farm Initializes VFE-TTD, Bob LPs Stable Swap
-- **FQS**: 
+- **Farm**: Creates VFE-TTD (VARQ + VP-AMM).
+- **VARQ (FQS)**: 
   - $S_{u,5} = 0$
   - $F_{i,n} = 700$
   - $R_{i,n} = 100$
@@ -355,9 +345,9 @@ This document details all mathematics, including the CSAMM, and a seven-step exa
   - $Z_{F,5} = 500$, $S_{v,5}(3, Farm) = 500$
   - OTC: $S_{v,5}(3, Farm) = 410$, $S_{u,5} = 10$
 - **Stable Swap**: 
-  - Initial: $X_{v,5} = 90$, $Y_{c,5} = 90$, $k_{ss} = 180$
+  - $X_{v,5} = 90$, $Y_{c,5} = 90$, $k_{ss} = 180$
   - Bob: $S_{v,5}(3, Bob) = 90$
-- **IDS**: $P_{R,5} = 7$, $\phi_5 = 1$, $\omega_5 = 0.1$.
+- **VARQ (IDS)**: $P_{R,5} = 7$, $\phi_5 = 1$, $\omega_5 = 0.1$.
 - **Valuation**: $U_{val,5} = 10 + \frac{200}{9} + \frac{100 \cdot 2}{9} + \frac{410}{9} = 100$.
 
 ### $n = 6$: Charlie Converts 1 USDC to 1 USDV
@@ -367,25 +357,23 @@ This document details all mathematics, including the CSAMM, and a seven-step exa
 
 ### $n = 7$: Charlie Converts 1 USDV to TTDV, Then TTDC
 - **Forward Swap**:
-  - $U_{i,n} = 1$, $S_{u,7} = 11$
-  - $F_{i,n} = 7$, $R_{i,n} = 1$
-  - $S_{r,7} = 101$, $S_{f,7} = 707$
-  - $X_{R,7} = 101$, $Y_{F,7} = \frac{20,000}{101} \approx 198.0198$
-  - $F_{s,n} = 1.9802$, $F_{e,n} = 8.9802$
-  - $F_{t,7} = 8.9802$, $S_{v,7}(3, Charlie) = 8.9802$
+  - **VARQ**: 
+    - $U_{i,n} = 1$, $S_{u,7} = 11$
+    - $F_{i,n} = 7$, $R_{i,n} = 1$
+    - $S_{r,7} = 101$, $S_{f,7} = 707$
+  - **VP-AMM**: 
+    - $X_{R,7} = 101$, $Y_{F,7} \approx 198.0198$
+    - $F_{s,n} = 1.9802$, $F_{e,n} = 8.9802$
+    - $F_{t,7} = 8.9802$, $S_{v,7}(3, Charlie) = 8.9802$
 - **Stable Swap**:
   - **Pre-Swap**: $X_{v,6} = 90$, $Y_{c,6} = 90$, $k_{ss} = 180$
   - **Input**: $\Delta X_v = 8.9802$
-  - **Equations**:
-    - $X_{v,7} = X_{v,6} + \Delta X_v = 90 + 8.9802 = 98.9802$
-    - $Y_{c,7} = k_{ss} - X_{v,7} = 180 - 98.9802 = 81.0198$
-    - $\Delta Y_c = Y_{c,6} - Y_{c,7} = 90 - 81.0198 = 8.9802$
-  - **Post-Swap**: $X_{v,7} = 98.9802$, $Y_{c,7} = 81.0198$
+  - $X_{v,7} = 98.9802$, $Y_{c,7} = 81.0198$, $\Delta Y_c = 8.9802$
   - Charlie: $S_{v,7}(3, Charlie) = 0$, receives 8.9802 TTDC
-- **Valuation**: $U_{val,7} = 11 + \frac{198.0198}{9} + \frac{101 \cdot 1.9606}{9} + \frac{410}{9} \approx 100.56$.
+- **Valuation**: $U_{val,7} \approx 100.56$.
 
 ---
 
 ## 7. Conclusion
 
-The VFE-TTD protocol now fully specifies the CSAMM mathematics, ensuring clarity at $n = 7$. The Stable Swap maintains a 1:1 peg, validated by $\Delta Y_c = \Delta X_v$.
+The Virtual Finance Protocol (ViFi Protocol), with the VFE-TTD as a core component, fully specifies the VARQ (FQS + IDS) and VP-AMM interactions. Forward swaps flow from VARQ to VP-AMM, while reverse swaps flow from VP-AMM to VARQ. The Farm’s ability to instantiate multiple VFEs ensures scalability across fiat ecosystems within the ViFi framework.
