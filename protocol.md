@@ -246,9 +246,9 @@ This paper details all mathematics and applies them to a numerical example with 
   - \( U_{val,7} = 11 + 22.0022 + 22.0022 + 45.5556 \approx 100.56 \) (includes 1 USDV input).
 - **Stable Swap**:
   - \( \Delta X = 8.9802 \).
-  - \( \Delta Y = 90 - \frac{180}{90 + 8.9802} = 90 - \frac{180}{98.9802} \approx 90 - 81.8335 = 8.1665 \).
-  - \( X = 90 + 8.9802 = 98.9802 \), \( Y = 90 - 8.1665 = 81.8335 \).
-  - Charlie: \( S_{v,7}(3, Charlie) = 0 \), 8.1665 TTDC.
+  - \( \Delta Y = \Delta X = 8.9802 \).
+  - \( X = 90 + 8.9802 = 98.9802 \), \( Y = 90 - 8.9802 = 81.0198 \).
+  - Charlie: \( S_{v,7}(3, Charlie) = 0 \), 8.9802 TTDC.
 
 ---
 
