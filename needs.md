@@ -87,7 +87,7 @@ function varqContraction(
 - VARQ tracks all system-wide token quantities and rates
 - AMM tracks the pool balances for both token types
 - System invariants:
-  * usdcSupplyDeployed = fiatTokensSupply + redemptionTokensSupply
+  * usdcSupplyDeployed = fiatTokensSupply & redemptionTokensSupply
   * redemptionPool ≤ redemptionTokensSupply
   * fiatPool ≤ fiatTokensSupply
   * For deposit amount delta_u: fee = (delta_u * feeRate) / 10000
