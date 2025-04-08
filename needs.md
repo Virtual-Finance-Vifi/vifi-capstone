@@ -111,7 +111,7 @@ function varqContraction(
    - Amount in pool tracked by fiatPool
 
 3. Redemption Tokens
-   - ERC20-compliant
+   - None ERC20-compliant (Exist only within the Smart Contract)
    - Represents reserve pool allocation
    - Amount in pool tracked by redemptionPool
 
